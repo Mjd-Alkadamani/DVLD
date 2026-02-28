@@ -1,0 +1,13 @@
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\mscorlib.dll
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\normidna.nlp
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\normnfc.nlp
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\normnfd.nlp
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\normnfkc.nlp
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\normnfkd.nlp
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\obj\Debug\Generale.csproj.AssemblyReference.cache
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\obj\Debug\Generale.csproj.CoreCompileInputs.cache
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\obj\Debug\Generale.csproj.CopyComplete
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\Generale.dll
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\bin\Debug\Generale.pdb
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\obj\Debug\Generale.dll
+D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\ClassLibrary1\obj\Debug\Generale.pdb
