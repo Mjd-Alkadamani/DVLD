@@ -49,9 +49,9 @@
       <Project>{11c88c4c-247a-4ebc-9977-72cd63b5d9bd}</Project>
       <Name>DataAccessTier</Name>
     </ProjectReference>
-    <ProjectReference Include="..\GeneralsAndSettings\Generale.csproj">
+    <ProjectReference Include="..\GeneralsAndSettings\General.csproj">
       <Project>{3a964faf-41e2-4377-9f17-baadf4e65ed0}</Project>
-      <Name>Generale</Name>
+      <Name>General</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

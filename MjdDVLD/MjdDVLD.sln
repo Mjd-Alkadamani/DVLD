@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAccessTier", "..\DataAc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusinessTier", "..\BusinessTier\BusinessTier.csproj", "{15871B7B-6800-4A12-879E-2023FEEA4EC0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Generale", "..\GeneralsAndSettings\Generale.csproj", "{3A964FAF-41E2-4377-9F17-BAADF4E65ED0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "General", "..\GeneralsAndSettings\General.csproj", "{3A964FAF-41E2-4377-9F17-BAADF4E65ED0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

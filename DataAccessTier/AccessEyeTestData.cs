@@ -5,19 +5,19 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
     public class DTEyeTest
     {
-        internal protected DTEyeTest(int EyeTestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int CreatedByUserID,
+        internal protected DTEyeTest(int TestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int AppointmentMadeByUserID,
             int TestApplicationID,bool? TestResult,string Notes,int? ResultAddedByUserID)
         {
-            this._EyeTestID = EyeTestID;
+            this._TestID = TestID;
             this.PersonID = PersonID;
             this.AppointmentDate = AppointmentDate;
-            this.CreatedByUserID = CreatedByUserID;
+            this.AppointmentMadeByUserID = AppointmentMadeByUserID;
             this.PaidFees = PaidFees;
             this.TestApplicationID = TestApplicationID;
             this.TestResult = TestResult;
@@ -25,12 +25,12 @@ namespace DataAccessTier
             this.ResultAddedByUserID = ResultAddedByUserID;
         }
 
-        internal int _EyeTestID;
-        public int EyeTestID { get { return _EyeTestID; } }
+        internal int _TestID;
+        public int TestID { get { return _TestID; } }
         public int PersonID;
         public DateTime AppointmentDate;
         public Decimal PaidFees;
-        public int CreatedByUserID;
+        public int AppointmentMadeByUserID;
         public int TestApplicationID;
         public bool? TestResult;
         public string Notes;
@@ -42,13 +42,13 @@ namespace DataAccessTier
         // returns the last EyeTest person tacked 
         public static DTEyeTest FindLastTestForPerson(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT top 1 " +
-                " [EyeTestID]" +
+                " [TestID]" +
                 ",[AppointmentDate]" +
                 ",[PaidFees]" +
-                ",[CreatedByUserID]" +
+                ",[AppointmentMadeByUserID]" +
                 ",[TestApplicationID]" +
                 ",[TestResult]" +
                 ",[Notes]" +
@@ -69,8 +69,8 @@ namespace DataAccessTier
                 if (Reader.Read())
                 {
                     FindedEyeTest = new DTEyeTest
-                        ((int)Reader["EyeTestID"], PersonID, (DateTime)Reader["AppointmentDate"],
-                         (decimal)Reader["PaidFees"], (int)Reader["CreatedByUserID"], (int)Reader["TestApplicationID"],
+                        ((int)Reader["TestID"], PersonID, (DateTime)Reader["AppointmentDate"],
+                         (decimal)Reader["PaidFees"], (int)Reader["AppointmentMadeByUserID"], (int)Reader["TestApplicationID"],
                          Reader["TestResult"] == DBNull.Value ? null : (bool?)Reader["TestResult"], (string)Reader["Notes"],
                          Reader["ResultAddedByUserID"] == DBNull.Value ? null : (int?)Reader["ResultAddedByUserID"]);
                 }
@@ -88,24 +88,25 @@ namespace DataAccessTier
 
         }
 
-        public static DTEyeTest Find(int EyeTestID)
+        public static DTEyeTest Find(int TestID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                 " [PersonID]" +
                 ",[AppointmentDate]" +
                 ",[PaidFees]" +
-                ",[CreatedByUserID]" +
+                ",[AppointmentMadeByUserID]" +
                 ",[TestApplicationID]" +
                 ",[TestResult]" +
                 ",[Notes]" +
                 ",[ResultAddedByUserID]" +
                   " FROM [dbo].[Eye Tests]" +
-                      " where EyeTestID = @EyeTestID";
+                      " where TestID = @TestID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
-            Command.Parameters.AddWithValue("@EyeTestID", EyeTestID);
+
+            Command.Parameters.AddWithValue("@TestID", TestID);
             DTEyeTest FindedEyeTest = null;
 
             try
@@ -120,9 +121,61 @@ namespace DataAccessTier
 
 
                     FindedEyeTest = new DTEyeTest
-                        (EyeTestID, (int)Reader["PersonID"], (DateTime)Reader["AppointmentDate"],
-                         (decimal)Reader["PaidFees"], (int)Reader["CreatedByUserID"], (int)Reader["TestApplicationID"],
-                        Reader["TestResult"] == DBNull.Value ? null : (bool?)Reader["TestResult"], (string)Reader["Notes"],
+                        (TestID, (int)Reader["PersonID"], (DateTime)Reader["AppointmentDate"],
+                         (decimal)Reader["PaidFees"], (int)Reader["AppointmentMadeByUserID"], (int)Reader["TestApplicationID"],
+                        Reader["TestResult"] == DBNull.Value ? null : (bool?)Reader["TestResult"], Reader["Notes"] == DBNull.Value ? null: (string)Reader["Notes"],
+                         Reader["ResultAddedByUserID"] == DBNull.Value ? null : (int?)Reader["ResultAddedByUserID"]);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return FindedEyeTest;
+
+        }
+        
+        public static DTEyeTest FindByApplicationID(int ApplicationID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT" +
+                " [TestID]" +
+                ",[PersonID]" +
+                ",[AppointmentDate]" +
+                ",[PaidFees]" +
+                ",[AppointmentMadeByUserID]" +
+                ",[TestResult]" +
+                ",[Notes]" +
+                ",[ResultAddedByUserID]" +
+                  " FROM [dbo].[Eye Tests]" +
+                      " where TestApplicationID = @TestApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@TestApplicationID", ApplicationID);
+            DTEyeTest FindedEyeTest = null;
+
+            try
+            {
+                Connection.Open();
+                SqlDataReader Reader = Command.ExecuteReader();
+
+
+
+                if (Reader.Read())
+                {
+
+
+                    FindedEyeTest = new DTEyeTest
+                        ((int)Reader["TestID"], (int)Reader["PersonID"], (DateTime)Reader["AppointmentDate"],
+                         (decimal)Reader["PaidFees"], (int)Reader["AppointmentMadeByUserID"], ApplicationID,
+                        Reader["TestResult"] == DBNull.Value ? null : (bool?)Reader["TestResult"], Reader["Notes"] == DBNull.Value ? null: (string)Reader["Notes"],
                          Reader["ResultAddedByUserID"] == DBNull.Value ? null : (int?)Reader["ResultAddedByUserID"]);
                 }
             }
@@ -139,14 +192,14 @@ namespace DataAccessTier
 
         }
 
-        public static bool IsExist(int EyeTestID)
+        public static bool IsExist(int TestID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
-            string Query = @"select top 1 isExist = 1 from [Eye Tests] where  EyeTestID =  @EyeTestID";
+            string Query = @"select top 1 isExist = 1 from [Eye Tests] where  TestID =  @TestID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
-            Command.Parameters.AddWithValue("@EyeTestID", EyeTestID);
+            Command.Parameters.AddWithValue("@TestID", TestID);
             bool IsExist = false;
 
             try
@@ -172,14 +225,14 @@ namespace DataAccessTier
 
         }
 
-        public static bool IsExistByApplicationID(int EyeTestID)
+        public static bool IsExistByApplicationID(int TestID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
-            string Query = @"select top 1 isExist = 1 from [Eye Tests] where  EyeTestID =  @EyeTestID";
+            string Query = @"select top 1 isExist = 1 from [Eye Tests] where  TestID =  @TestID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
-            Command.Parameters.AddWithValue("@EyeTestID", EyeTestID);
+            Command.Parameters.AddWithValue("@TestID", TestID);
             bool IsExist = false;
 
             try
@@ -205,17 +258,83 @@ namespace DataAccessTier
 
         }
 
+        public static bool IsPassed(int TestID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = @"select top 1 IsPassed = 1 from [Eye Tests] where  TestID =  @TestID and TestResult = 1 ";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@TestID", TestID);
+            bool IsExist = false;
+
+            try
+            {
+                Connection.Open();
+
+                object Exist = Command.ExecuteScalar();
+
+                if (Exist != null)
+                    IsExist = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return IsExist;
+
+        }
+        
+        public static DateTime? GetAppointmentDate(int TestID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = @"select [AppointmentDate] from [Eye Tests] where  TestID =  @TestID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@TestID", TestID);
+
+            DateTime? AppointmentDate = null;
+
+            try
+            {
+                Connection.Open();
+
+                object Object = Command.ExecuteScalar();
+
+                if (Object != null)
+                    AppointmentDate = Convert.ToDateTime(Object);
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return AppointmentDate;
+
+        }
 
         public static DataTable ListAllEyeTests()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
-                " [EyeTestID]" +
+                " [TestID]" +
                 ",[PersonID]" +
                 ",[AppointmentDate]" +
                 ",[PaidFees]" +
-                ",[CreatedByUserID]" +
+                ",[AppointmentMadeByUserID]" +
                 ",[TestApplicationID]" +
                 ",[TestResult]" +
                 ",[Notes]" +
@@ -246,10 +365,63 @@ namespace DataAccessTier
             return Table;
         }
 
+        public static DataTable ListAllPersonEyeTests(int PersonID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT" +
+                " [TestID]" +
+                ",[PersonID]" +
+                ",[AppointmentDate]" +
+                ",[PaidFees]" +
+                ",[AppointmentMadeByUserID]" +
+                ",[TestApplicationID]" +
+                ",[TestResult]" +
+                ",[Notes]" +
+                ",[ResultAddedByUserID]" +
+                " FROM [dbo].[Eye Tests]" +
+                " Where PersonID = @PersonID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@PersonID", PersonID);
+
+            DataTable Table = new DataTable();
+
+            try
+            {
+                Connection.Open();
+
+                SqlDataReader Reader = Command.ExecuteReader();
+
+                Table.Load(Reader);
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return Table;
+        }
+
+
         internal static int? _AddNewEyeTest(ref DTEyeTest EyeTestToAdd)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            if (EyeTestToAdd == null)
+                return null;
+            if (EyeTestToAdd.TestApplicationID == -1)
+                return null;
+
+            if (AccessApplicationData.CouldAttachTestOfTypeToApplication(EyeTestToAdd.TestApplicationID, TestType.EyeTest))
+                return null;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
             "INSERT INTO [dbo].[Eye Tests]" +
@@ -257,7 +429,7 @@ namespace DataAccessTier
                 "( @PersonID" +
                 ", @AppointmentDate" +
                 ", @PaidFees" +
-                ", @CreatedByUserID" +
+                ", @AppointmentMadeByUserID" +
                 ", @TestApplicationID" +
                 ", @TestResult" +
                 ", @Notes" +
@@ -269,10 +441,14 @@ namespace DataAccessTier
             Command.Parameters.AddWithValue("@PersonID", EyeTestToAdd.PersonID);
             Command.Parameters.AddWithValue("@AppointmentDate", EyeTestToAdd.AppointmentDate);
             Command.Parameters.AddWithValue("@PaidFees", EyeTestToAdd.PaidFees);
-            Command.Parameters.AddWithValue("@CreatedByUserID", EyeTestToAdd.CreatedByUserID);
+            Command.Parameters.AddWithValue("@AppointmentMadeByUserID", EyeTestToAdd.AppointmentMadeByUserID);
             Command.Parameters.AddWithValue("@TestApplicationID", EyeTestToAdd.TestApplicationID);
-            Command.Parameters.AddWithValue("@Notes", EyeTestToAdd.Notes);
 
+            if (EyeTestToAdd.Notes != null)
+                Command.Parameters.AddWithValue("@Notes", EyeTestToAdd.Notes);
+            else
+                Command.Parameters.AddWithValue("@Notes", DBNull.Value);
+            
             if (EyeTestToAdd.TestResult != null)
                 Command.Parameters.AddWithValue("@TestResult", EyeTestToAdd.TestResult);
             else
@@ -290,10 +466,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -305,15 +481,15 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            EyeTestToAdd._EyeTestID = AddedID ?? -1;
+            EyeTestToAdd._TestID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
         
-        public static DTEyeTest AddNewEyeTest(int PersonID, DateTime AppointmentDate, Decimal PaidFees, int CreatedByUserID
+        public static DTEyeTest AddNewEyeTest(int PersonID, DateTime AppointmentDate, Decimal PaidFees, int AppointmentMadeByUserID
             ,int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID)
         {
-            DTEyeTest EyeTest = new DTEyeTest(-1, PersonID, AppointmentDate, PaidFees, CreatedByUserID, TestApplicationID,
+            DTEyeTest EyeTest = new DTEyeTest(-1, PersonID, AppointmentDate, PaidFees, AppointmentMadeByUserID, TestApplicationID,
                 TestResult, Notes, ResultAddedByUserID);
 
             int? NewID = _AddNewEyeTest(ref EyeTest);
@@ -324,19 +500,19 @@ namespace DataAccessTier
                 return null;
         }
 
-        public static bool UpdateEyeTest(int EyeTestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int CreatedByUserID
+        public static bool UpdateEyeTest(int TestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int AppointmentMadeByUserID
             , int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID)
         {
-            if(!IsExist(EyeTestID))
+            if(!IsExist(TestID))
               return false;
 
-            return UpdateEyeTest(new DTEyeTest(EyeTestID, PersonID, AppointmentDate, PaidFees, CreatedByUserID, TestApplicationID, TestResult, Notes, ResultAddedByUserID));
+            return UpdateEyeTest(new DTEyeTest(TestID, PersonID, AppointmentDate, PaidFees, AppointmentMadeByUserID, TestApplicationID, TestResult, Notes, ResultAddedByUserID));
         }
 
         public static bool UpdateEyeTest(DTEyeTest EyeTestToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -345,26 +521,30 @@ namespace DataAccessTier
               " [PersonID]  = @PersonID" +
               ",[AppointmentDate] = @AppointmentDate" +
               ",[PaidFees] = @PaidFees" +
-              ",[CreatedByUserID] = @CreatedByUserID" +
+              ",[AppointmentMadeByUserID] = @AppointmentMadeByUserID" +
               ",[TestApplicationID] = @TestApplicationID" +
               ",[TestResult] = @TestResult" +
               ",[Notes] = @Notes" +
               ",[ResultAddedByUserID] = @ResultAddedByUserID" +
-                   " WHERE EyeTestID = @EyeTestID";
+                   " WHERE TestID = @TestID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
 
             Command.Parameters.AddWithValue("@PersonID", EyeTestToUpdate.PersonID);
             Command.Parameters.AddWithValue("@AppointmentDate", EyeTestToUpdate.AppointmentDate);
             Command.Parameters.AddWithValue("@PaidFees", EyeTestToUpdate.PaidFees);
-            Command.Parameters.AddWithValue("@CreatedByUserID", EyeTestToUpdate.CreatedByUserID);
+            Command.Parameters.AddWithValue("@AppointmentMadeByUserID", EyeTestToUpdate.AppointmentMadeByUserID);
             Command.Parameters.AddWithValue("@TestApplicationID", EyeTestToUpdate.TestApplicationID);
-            Command.Parameters.AddWithValue("@Notes", EyeTestToUpdate.Notes);
 
             if (EyeTestToUpdate.TestResult != null)
                 Command.Parameters.AddWithValue("@TestResult", EyeTestToUpdate.TestResult);
             else
                 Command.Parameters.AddWithValue("@TestResult", DBNull.Value);
+            
+            if (EyeTestToUpdate.Notes != null)
+            Command.Parameters.AddWithValue("@Notes", EyeTestToUpdate.Notes);
+            else
+                Command.Parameters.AddWithValue("@Notes", DBNull.Value);
 
             if (EyeTestToUpdate.ResultAddedByUserID != null)
                 Command.Parameters.AddWithValue("@ResultAddedByUserID", EyeTestToUpdate.ResultAddedByUserID);
@@ -373,7 +553,7 @@ namespace DataAccessTier
 
 
 
-            Command.Parameters.AddWithValue("@EyeTestID", EyeTestToUpdate.EyeTestID);
+            Command.Parameters.AddWithValue("@TestID", EyeTestToUpdate.TestID);
 
             bool DoesUpdateSucceded = false;
 
@@ -399,19 +579,19 @@ namespace DataAccessTier
             return DoesUpdateSucceded;
         }
 
-        public static bool DeleteEyeTest(int EyeTestIDToDelete)
+        public static bool DeleteEyeTest(int TestIDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
               "delete from [dbo].[Eye Tests]" +
-                   "WHERE EyeTestID = @EyeTestID";
+                   "WHERE TestID = @TestID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
 
-            Command.Parameters.AddWithValue("@EyeTestID", EyeTestIDToDelete);
+            Command.Parameters.AddWithValue("@TestID", TestIDToDelete);
 
             bool DoesDeletionSucceded = false;
 

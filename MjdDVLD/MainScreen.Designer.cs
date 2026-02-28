@@ -42,6 +42,13 @@ namespace MjdDVLD
             this.allDriversToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.peopleToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.allPeopleListToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.testsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.eyeTestToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.listAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.drivingTestsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.theoreticalTestsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.listAllToolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.listAllToolStripMenuItem2 = new System.Windows.Forms.ToolStripMenuItem();
             this.msMainStrip.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -52,7 +59,8 @@ namespace MjdDVLD
             this.licensesToolStripMenuItem,
             this.userToolStripMenuItem,
             this.driversToolStripMenuItem,
-            this.peopleToolStripMenuItem});
+            this.peopleToolStripMenuItem,
+            this.testsToolStripMenuItem});
             this.msMainStrip.Location = new System.Drawing.Point(0, 0);
             this.msMainStrip.Name = "msMainStrip";
             this.msMainStrip.Size = new System.Drawing.Size(924, 24);
@@ -116,7 +124,7 @@ namespace MjdDVLD
             // allUsersToolStripMenuItem
             // 
             this.allUsersToolStripMenuItem.Name = "allUsersToolStripMenuItem";
-            this.allUsersToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.allUsersToolStripMenuItem.Size = new System.Drawing.Size(119, 22);
             this.allUsersToolStripMenuItem.Text = "All Users";
             this.allUsersToolStripMenuItem.Click += new System.EventHandler(this.allUsersToolStripMenuItem_Click);
             // 
@@ -149,6 +157,61 @@ namespace MjdDVLD
             this.allPeopleListToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
             this.allPeopleListToolStripMenuItem.Text = "All People List";
             this.allPeopleListToolStripMenuItem.Click += new System.EventHandler(this.allPeopleListToolStripMenuItem_Click);
+            // 
+            // testsToolStripMenuItem
+            // 
+            this.testsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.eyeTestToolStripMenuItem,
+            this.drivingTestsToolStripMenuItem,
+            this.theoreticalTestsToolStripMenuItem});
+            this.testsToolStripMenuItem.Name = "testsToolStripMenuItem";
+            this.testsToolStripMenuItem.Size = new System.Drawing.Size(46, 20);
+            this.testsToolStripMenuItem.Text = "Tests";
+            // 
+            // eyeTestToolStripMenuItem
+            // 
+            this.eyeTestToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.listAllToolStripMenuItem});
+            this.eyeTestToolStripMenuItem.Name = "eyeTestToolStripMenuItem";
+            this.eyeTestToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.eyeTestToolStripMenuItem.Text = "Eye Tests";
+            // 
+            // listAllToolStripMenuItem
+            // 
+            this.listAllToolStripMenuItem.Name = "listAllToolStripMenuItem";
+            this.listAllToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.listAllToolStripMenuItem.Text = "List All";
+            this.listAllToolStripMenuItem.Click += new System.EventHandler(this.listAllToolStripMenuItem_Click);
+            // 
+            // drivingTestsToolStripMenuItem
+            // 
+            this.drivingTestsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.listAllToolStripMenuItem1});
+            this.drivingTestsToolStripMenuItem.Name = "drivingTestsToolStripMenuItem";
+            this.drivingTestsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.drivingTestsToolStripMenuItem.Text = "Driving Tests";
+            // 
+            // theoreticalTestsToolStripMenuItem
+            // 
+            this.theoreticalTestsToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.listAllToolStripMenuItem2});
+            this.theoreticalTestsToolStripMenuItem.Name = "theoreticalTestsToolStripMenuItem";
+            this.theoreticalTestsToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.theoreticalTestsToolStripMenuItem.Text = "Theoretical Tests";
+            // 
+            // listAllToolStripMenuItem1
+            // 
+            this.listAllToolStripMenuItem1.Name = "listAllToolStripMenuItem1";
+            this.listAllToolStripMenuItem1.Size = new System.Drawing.Size(180, 22);
+            this.listAllToolStripMenuItem1.Text = "List All";
+            this.listAllToolStripMenuItem1.Click += new System.EventHandler(this.listAllToolStripMenuItem1_Click);
+            // 
+            // listAllToolStripMenuItem2
+            // 
+            this.listAllToolStripMenuItem2.Name = "listAllToolStripMenuItem2";
+            this.listAllToolStripMenuItem2.Size = new System.Drawing.Size(180, 22);
+            this.listAllToolStripMenuItem2.Text = "List All";
+            this.listAllToolStripMenuItem2.Click += new System.EventHandler(this.listAllToolStripMenuItem2_Click);
             // 
             // MainScreen
             // 
@@ -185,5 +248,12 @@ namespace MjdDVLD
         private System.Windows.Forms.ToolStripMenuItem allDriversToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem peopleToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem allPeopleListToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem testsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem eyeTestToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem listAllToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem drivingTestsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem listAllToolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem theoreticalTestsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem listAllToolStripMenuItem2;
     }
 }

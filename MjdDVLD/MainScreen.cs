@@ -34,14 +34,14 @@ namespace MjdDVLD
         {
             DataTable table = DVLDApp.MangeLicenses.ListAllLicenses();
 
-            if (table.Rows.Count == 0)
+            /*if (table.Rows.Count == 0)
             {
                 MessageBox.Show("There is no Licenses found.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
-            }
+            }*/
 
             ListAllForm Licenses = new ListAllForm(table, "Licenses", new ListAllForm.Permissions(
-                ListAllForm.Permissions.Permission.Add,ListAllForm.Permissions.Permission.Edit,ListAllForm.Permissions.Permission.ShowCard,ListAllForm.Permissions.Permission.Refresh), false);
+                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
             Licenses.OnAddButtonClick += AddLicense;
             Licenses.OnEditButtonClick += EditLicense;
@@ -69,7 +69,7 @@ namespace MjdDVLD
 
         private void ShowLicenseCard(object sender, int ID)
         {
-            Licenses_Forms.AddEditLicenses ShowCardScreen = new Licenses_Forms.AddEditLicenses(ID,true);
+            Licenses_Forms.AddEditLicenses ShowCardScreen = new Licenses_Forms.AddEditLicenses(ID, true);
 
             ShowCardScreen.ShowDialog();
         }
@@ -78,7 +78,7 @@ namespace MjdDVLD
         {
             Table = DVLDApp.MangeLicenses.ListAllLicenses();
         }
-        
+
         private bool DeleteLicenses(object sender, int ID)
         {
             return DVLDApp.MangeLicenses.DeleteLicense(ID);
@@ -96,12 +96,12 @@ namespace MjdDVLD
                 MessageBox.Show("There is no Ditened Licenses Curnutly.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
-                table.Select($"ReleaseDate = \'{DBNull.Value}\' Or ReleasedByUserID = \'{DBNull.Value}\' or ReleaseApplicationID = \'{DBNull.Value}\'");
+
+            table.Select($"ReleaseDate = \'{DBNull.Value}\' Or ReleasedByUserID = \'{DBNull.Value}\' or ReleaseApplicationID = \'{DBNull.Value}\'");
             // ListAllForm DitenedLicenses = new ListAllForm(table, "Curnutly Ditened Licenses");
             // DitenedLicenses.ShowDialog();
-            
-   
+
+
 
         }
 
@@ -122,18 +122,18 @@ namespace MjdDVLD
 
         }
 
-    ///////////// Aplications /////////////
+        ///////////// Aplications /////////////
 
         private void showAllApplicationsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             DataTable table = DVLDApp.MangeApplications.ListAllApplications();
-
+            /*
             if (table.Rows.Count == 0)
             {
                 MessageBox.Show("There is no Applications found.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-
+            */
             ListAllForm Applications = new ListAllForm(table, "Applicatins", new ListAllForm.Permissions(
                     ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
@@ -253,7 +253,7 @@ namespace MjdDVLD
             }
 
             ListAllForm DriversList = new ListAllForm(table, "Drivers", new ListAllForm.Permissions(
-                ListAllForm.Permissions.Permission.Add,ListAllForm.Permissions.Permission.Delete, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Delete, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
             DriversList.OnAddButtonClick += AddDriver;
             DriversList.OnEditButtonClick += EditDriver;
@@ -311,7 +311,7 @@ namespace MjdDVLD
             }
 
             ListAllForm People = new ListAllForm(table, "People", new ListAllForm.Permissions(
-                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard,ListAllForm.Permissions.Permission.Refresh),false);
+                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
             People.OnAddButtonClick += AddPerson;
             People.OnEditButtonClick += EditPerson;
@@ -320,7 +320,7 @@ namespace MjdDVLD
 
 
             People.ShowDialog();
-            
+
         }
 
         private void AddPerson(object sender)
@@ -328,23 +328,149 @@ namespace MjdDVLD
             MjdDVLD.People_Forms.AddEditPerson AddScreen = new People_Forms.AddEditPerson();
             AddScreen.ShowDialog();
         }
-    
-        private void EditPerson(object sender, int iD)
+
+        private void EditPerson(object sender, int ID)
         {
 
-            MjdDVLD.People_Forms.AddEditPerson AddScreen = new People_Forms.AddEditPerson(iD);
+            MjdDVLD.People_Forms.AddEditPerson AddScreen = new People_Forms.AddEditPerson(ID);
             AddScreen.ShowDialog();
         }
 
-        private void ShowPerson(object sender, int iD)
+        private void ShowPerson(object sender, int ID)
         {
-            MjdDVLD.People_Forms.AddEditPerson AddScreen = new People_Forms.AddEditPerson(iD,true);
+            MjdDVLD.People_Forms.AddEditPerson AddScreen = new People_Forms.AddEditPerson(ID, true);
             AddScreen.ShowDialog();
         }
 
         private void RefrashPeople(object sender, ref DataTable Table)
         {
             Table = DVLDApp.MangePeople.ListAllPeople();
+        }
+
+
+        ///////////// Tests /// Eye Test ////////
+
+        private void listAllToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+            DataTable table = DVLDApp.MangeEyeTests.ListAllEyeTests();
+
+            if (table.Rows.Count == 0)
+            {
+                MessageBox.Show("There is no Tests found.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            ListAllForm EyeTests = new ListAllForm(table, "Eye Tests", new ListAllForm.Permissions(
+                ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+
+            EyeTests.OnEditButtonClick += EditEyeTest;
+            EyeTests.OnShowCardButtonClick += ShowEyeTest;
+            EyeTests.OnRefrashButtonClick += RefrashEyeTests;
+
+
+            EyeTests.ShowDialog();
+
+        }
+
+        private void EditEyeTest(object sender, int ID)
+        {
+
+            MjdDVLD.Test_Forms.AddEditTest AddScreen = new Test_Forms.AddEditTest(General.TestType.EyeTest, null, ID);
+            AddScreen.ShowDialog();
+        }
+
+        private void ShowEyeTest(object sender, int ID)
+        {
+            MjdDVLD.Test_Forms.AddEditTest AddScreen = new Test_Forms.AddEditTest(General.TestType.EyeTest, null, ID, true);
+            AddScreen.ShowDialog();
+        }
+
+        private void RefrashEyeTests(object sender, ref DataTable Table)
+        {
+            Table = DVLDApp.MangeEyeTests.ListAllEyeTests();
+        }
+
+        ///////////// Tests /// Driving Test ////////
+
+        private void listAllToolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            DataTable table = DVLDApp.MangeDrivingTests.ListAllTests();
+
+            if (table.Rows.Count == 0)
+            {
+                MessageBox.Show("There is no Tests found.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            ListAllForm DrivingTests = new ListAllForm(table, "Driving Tests", new ListAllForm.Permissions(
+                ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+
+            DrivingTests.OnEditButtonClick += EditDrivingTest;
+            DrivingTests.OnShowCardButtonClick += ShowDrivingTest;
+            DrivingTests.OnRefrashButtonClick += RefrashDrivingTests;
+
+
+            DrivingTests.ShowDialog();
+        }
+
+        private void EditDrivingTest(object sender, int ID)
+        {
+
+            MjdDVLD.Test_Forms.AddEditTest AddScreen = new Test_Forms.AddEditTest(General.TestType.DrivingTest, null, ID);
+            AddScreen.ShowDialog();
+        }
+
+        private void ShowDrivingTest(object sender, int ID)
+        {
+            MjdDVLD.Test_Forms.AddEditTest AddScreen = new Test_Forms.AddEditTest(General.TestType.DrivingTest, null, ID, true);
+            AddScreen.ShowDialog();
+        }
+
+        private void RefrashDrivingTests(object sender, ref DataTable Table)
+        {
+            Table = DVLDApp.MangeDrivingTests.ListAllTests();
+        }
+
+        ///////////// Tests /// Driving Test ////////
+
+        private void listAllToolStripMenuItem2_Click(object sender, EventArgs e)
+        {
+            DataTable table = DVLDApp.MangeTheoreticalTests.ListAllTests();
+
+            if (table.Rows.Count == 0)
+            {
+                MessageBox.Show("There is no Tests found.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            ListAllForm TheoreticalTests = new ListAllForm(table, "Theoretical Tests", new ListAllForm.Permissions(
+                ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+
+            TheoreticalTests.OnEditButtonClick += EditTheoreticalTest;
+            TheoreticalTests.OnShowCardButtonClick += ShowTheoreticalTest;
+            TheoreticalTests.OnRefrashButtonClick += RefrashTheoreticalTests;
+
+
+            TheoreticalTests.ShowDialog();
+        }
+
+        private void EditTheoreticalTest(object sender, int ID)
+        {
+
+            MjdDVLD.Test_Forms.AddEditTest AddScreen = new Test_Forms.AddEditTest(General.TestType.TheoreticalTest, null, ID);
+            AddScreen.ShowDialog();
+        }
+
+        private void ShowTheoreticalTest(object sender, int ID)
+        {
+            MjdDVLD.Test_Forms.AddEditTest AddScreen = new Test_Forms.AddEditTest(General.TestType.TheoreticalTest, null, ID, true);
+            AddScreen.ShowDialog();
+        }
+
+        private void RefrashTheoreticalTests(object sender, ref DataTable Table)
+        {
+            Table = DVLDApp.MangeTheoreticalTests.ListAllTests();
         }
 
     }

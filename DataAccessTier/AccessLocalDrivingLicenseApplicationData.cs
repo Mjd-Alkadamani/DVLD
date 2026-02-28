@@ -5,19 +5,21 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
     public class DTLocalDrivingLicenseApplication
     {
         internal protected DTLocalDrivingLicenseApplication(int LocalDrivingLicenseApplicationID, int ApplicationID,
-            LicenseClass LicenseClassID, int? EyeTestID)
+            LicenseClass LicenseClassID, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
         {
             this._LocalDrivingLicenseApplicationID = LocalDrivingLicenseApplicationID;
             this.ApplicationID = ApplicationID;
             this.LicenseClassID = LicenseClassID;
             this.EyeTestID = EyeTestID;
+            this.TheoritecalTestID = TheoritecalTestID;
+            this.DrivingTestID = DrivingTestID;
         }
 
         internal int _LocalDrivingLicenseApplicationID;
@@ -26,18 +28,22 @@ namespace DataAccessTier
         public int ApplicationID;
         public LicenseClass LicenseClassID;
         public int? EyeTestID;
+        public int? TheoritecalTestID;
+        public int? DrivingTestID;
     }
 
     public class AccessLocalDrivingLicenseApplicationData
     {
         public static DTLocalDrivingLicenseApplication Find(int LocalDrivingLicenseApplicationID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + " [ApplicationID]"
                   + ",[LicenseClassID]"
                   + ",[EyeTestID]"
+                  + ",[TheoreticalTestID]"
+                  + ",[DrivingTestID]"
                     + " FROM [dbo].[LocalDrivingLicenseApplications]"
                     + " where LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
 
@@ -58,7 +64,97 @@ namespace DataAccessTier
                      (LocalDrivingLicenseApplicationID,
                        (int)Reader["ApplicationID"],
                        ((int)Reader["LicenseClassID"]).ToLicenseClass(),
-                       Reader["EyeTestID"] == DBNull.Value ? null : (int?)Reader["EyeTestID"]
+                       Reader["EyeTestID"] == DBNull.Value ? null : (int?)Reader["EyeTestID"],
+                       Reader["TheoreticalTestID"] == DBNull.Value ? null : (int?)Reader["TheoreticalTestID"],
+                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"]
+                     );
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return FindedLocalDrivingLicenseApplication;
+
+        }
+        
+        public static LicenseClass? FindClass(int LocalDrivingLicenseApplicationID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT "
+                    + "[LicenseClassID]"
+                    + " FROM [dbo].[LocalDrivingLicenseApplications]"
+                    + " where LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalDrivingLicenseApplicationID);
+
+            LicenseClass? Class = null;
+
+            try
+            {
+                Connection.Open();
+                Object Object = null;
+                Object = Command.ExecuteScalar();
+
+
+                if (Object != null)
+                {
+                    Class = (LicenseClass)Convert.ToInt32(Class);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return Class;
+
+        }
+        
+        public static DTLocalDrivingLicenseApplication FindByApplicationID(int ApplicationID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT "
+                  + " [LocalDrivingLicenseApplicationID]"
+                  + ",[LicenseClassID]"
+                  + ",[EyeTestID]"
+                  + ",[TheoreticalTestID]"
+                  + ",[DrivingTestID]"
+                    + " FROM [dbo].[LocalDrivingLicenseApplications]"
+                    + " where ApplicationID = @ApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@ApplicationID", ApplicationID);
+            DTLocalDrivingLicenseApplication FindedLocalDrivingLicenseApplication = null;
+
+            try
+            {
+                Connection.Open();
+                SqlDataReader Reader = Command.ExecuteReader();
+
+
+
+                if (Reader.Read())
+                {
+                    FindedLocalDrivingLicenseApplication = new DTLocalDrivingLicenseApplication
+                     ((int)Reader["LocalDrivingLicenseApplicationID"],
+                       ApplicationID,
+                       ((int)Reader["LicenseClassID"]).ToLicenseClass(),
+                       Reader["EyeTestID"] == DBNull.Value ? null : (int?)Reader["EyeTestID"],
+                       Reader["TheoreticalTestID"] == DBNull.Value ? null : (int?)Reader["TheoreticalTestID"],
+                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"]
                      );
                 }
             }
@@ -77,7 +173,7 @@ namespace DataAccessTier
 
         public static LicenseClass? GetLocalDrivingApplicationClass(int LocalDrivingLicenseApplicationID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + "[LicenseClassID]"
@@ -108,10 +204,9 @@ namespace DataAccessTier
 
         }
 
-
         public static bool IsExist(int LocalDrivingLicenseApplicationID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from LocalDrivingLicenseApplications where  LocalDrivingLicenseApplicationID =  @LocalDrivingLicenseApplicationID";
 
@@ -142,15 +237,50 @@ namespace DataAccessTier
 
         }
 
+        public static bool IsExistByApplicationID(int ApplicationID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = @"select top 1 isExist = 1 from LocalDrivingLicenseApplications where  ApplicationID =  @ApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@ApplicationID", ApplicationID);
+            bool IsExist = false;
+
+            try
+            {
+                Connection.Open();
+
+                object Exist = Command.ExecuteScalar();
+
+                if (Exist != null)
+                    IsExist = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return IsExist;
+
+        }
+
         public static DataTable ListAllLocalDrivingLicenseApplications()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT"
                   + " [LocalDrivingLicenseApplicationID]"
                   + ",[ApplicationID]"
                   + ",[LicenseClassID]"
                   + ",[EyeTestID]"
+                  + ",[TheoreticalTestID]"
+                  + ",[DrivingTestID]"
                     + " FROM[dbo].[LocalDrivingLicenseApplications]";
 
             DataTable Table = new DataTable();
@@ -179,15 +309,40 @@ namespace DataAccessTier
 
         private static int? _AddNewLocalDrivingLicenseApplication(ref DTLocalDrivingLicenseApplication LocalDrivingLicenseApplicationToAdd)
         {
+            ApplicationType? Type = DataAccessTier.AccessApplicationData.GetApplicationType(LocalDrivingLicenseApplicationToAdd.ApplicationID);
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            switch (Type)
+            {
+                case null:
+                    return null;
+                case ApplicationType.LicenseIssuance:
+                    break;
+                case ApplicationType.RetakeTest:
+                    if (LocalDrivingLicenseApplicationToAdd.DrivingTestID != null ||
+                         LocalDrivingLicenseApplicationToAdd.TheoritecalTestID != null)
+                            return null;
+                    break;
+                case ApplicationType.DamagedReplacement:
+                case ApplicationType.MissingReplacement:
+                    if (LocalDrivingLicenseApplicationToAdd.EyeTestID != null ||
+                         LocalDrivingLicenseApplicationToAdd.DrivingTestID != null ||
+                          LocalDrivingLicenseApplicationToAdd.TheoritecalTestID != null)
+                        return null;
+                    break;
+                default:
+                    return null;
+            }
+            
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO [dbo].[LocalDrivingLicenseApplications]" +
            " VALUES " +
            "( @ApplicationID" +
            " ,@LicenseClass" +
-           " ,@EyeTestID);" +
+           " ,@EyeTestID" +
+           ",@TheoreticalTestID" +
+           ",@DrivingTestID);" +
            " SELECT SCOPE_IDENTITY();";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
@@ -203,16 +358,34 @@ namespace DataAccessTier
                 Command.Parameters.AddWithValue("@EyeTestID", LocalDrivingLicenseApplicationToAdd.EyeTestID);
             }
 
+            if (LocalDrivingLicenseApplicationToAdd.EyeTestID == null)
+            {
+                Command.Parameters.AddWithValue("@TheoreticalTestID", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@TheoreticalTestID", LocalDrivingLicenseApplicationToAdd.TheoritecalTestID);
+            }
+
+            if (LocalDrivingLicenseApplicationToAdd.EyeTestID == null)
+            {
+                Command.Parameters.AddWithValue("@DrivingTestID", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@DrivingTestID", LocalDrivingLicenseApplicationToAdd.DrivingTestID);
+            }
+
             int? AddedID = null;
 
             try
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -224,16 +397,16 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            LocalDrivingLicenseApplicationToAdd._LocalDrivingLicenseApplicationID = AddedID ?? -1;
+            LocalDrivingLicenseApplicationToAdd._LocalDrivingLicenseApplicationID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
 
         public static DTLocalDrivingLicenseApplication AddNewLocalDrivingLicenseApplication(int ApplicationID, LicenseClass LicenseClassID,
-            int? EyeTestID)
+            int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
         {
             DTLocalDrivingLicenseApplication NewLocalDrivingLicenseApplication = new DTLocalDrivingLicenseApplication(-1, ApplicationID,
-                LicenseClassID, EyeTestID);
+                LicenseClassID, EyeTestID, TheoritecalTestID, DrivingTestID);
 
             int? ID = _AddNewLocalDrivingLicenseApplication(ref NewLocalDrivingLicenseApplication);
 
@@ -248,19 +421,19 @@ namespace DataAccessTier
         }
 
         public static bool UpdateLocalDrivingLicenseApplication(int LocalDrivingLicenseApplicationID, int ApplicationID,
-            LicenseClass LicenseClassID, int? EyeTestID)
+            LicenseClass LicenseClassID, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
         {
             if (!IsExist(LocalDrivingLicenseApplicationID))
                 return false;
 
             return UpdateLocalDrivingLicenseApplication(new DTLocalDrivingLicenseApplication
-                (LocalDrivingLicenseApplicationID, ApplicationID, LicenseClassID, EyeTestID));
+                (LocalDrivingLicenseApplicationID, ApplicationID, LicenseClassID, EyeTestID, TheoritecalTestID, DrivingTestID));
         }
 
         public static bool UpdateLocalDrivingLicenseApplication(DTLocalDrivingLicenseApplication LocalDrivingLicenseApplicationToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -269,13 +442,15 @@ namespace DataAccessTier
               "[ApplicationID]   = @ApplicationID" +
               ",[LicenseClassID]        = @LicenseClassID" +
               ",[EyeTestID]    = @EyeTestID" +
+              ",[TheoreticalTestID]    = @TheoreticalTestID" +
+              ",[DrivingTestID]    = @DrivingTestID" +
                        " WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
 
             Command.Parameters.AddWithValue("@ApplicationID", LocalDrivingLicenseApplicationToUpdate.ApplicationID);
             Command.Parameters.AddWithValue("@LicenseClassID", LocalDrivingLicenseApplicationToUpdate.LicenseClassID);
-            
+
             if (LocalDrivingLicenseApplicationToUpdate.EyeTestID == null)
             {
                 Command.Parameters.AddWithValue("@EyeTestID", DBNull.Value);
@@ -283,6 +458,24 @@ namespace DataAccessTier
             else
             {
                 Command.Parameters.AddWithValue("@EyeTestID", LocalDrivingLicenseApplicationToUpdate.EyeTestID);
+            }
+
+            if (LocalDrivingLicenseApplicationToUpdate.TheoritecalTestID == null)
+            {
+                Command.Parameters.AddWithValue("@TheoreticalTestID", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@TheoreticalTestID", LocalDrivingLicenseApplicationToUpdate.TheoritecalTestID);
+            }
+
+            if (LocalDrivingLicenseApplicationToUpdate.DrivingTestID == null)
+            {
+                Command.Parameters.AddWithValue("@DrivingTestID", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@DrivingTestID", LocalDrivingLicenseApplicationToUpdate.DrivingTestID);
             }
 
             Command.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalDrivingLicenseApplicationToUpdate.LocalDrivingLicenseApplicationID);
@@ -314,7 +507,7 @@ namespace DataAccessTier
         public static bool DeleteLocalDrivingLicenseApplication(int IDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "delete from [dbo].[LocalDrivingLicenseApplications]" +
                    " WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";

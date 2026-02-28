@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
@@ -41,7 +41,7 @@ namespace DataAccessTier
     {
         public static DTInternationalLicense Find(int InternationalLicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
               + "[ApplicationID]"
@@ -94,7 +94,7 @@ namespace DataAccessTier
         
         public static DTInternationalLicense FindByApplicationID(int ApplicationID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
               + "[InternationalLicenseID]"
@@ -148,7 +148,7 @@ namespace DataAccessTier
 
         public static bool IsLicenseDetained(int LicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "select top 1 isExist = 1 from InternationalLicenses where  LicenseID =  @LicenseID and ReleaseDate = null";
 
@@ -180,7 +180,7 @@ namespace DataAccessTier
 
         public static bool IsExist(int InternationalLicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from InternationalLicenses where  InternationalLicenseID =  @InternationalLicenseID";
 
@@ -213,7 +213,7 @@ namespace DataAccessTier
 
         public static DataTable ListAllInternationalLicenses()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
       + "[InternationalLicenseID]"
@@ -253,7 +253,7 @@ namespace DataAccessTier
         private static int? _AddNewInternationalLicense(ref DTInternationalLicense InternationalLicenseToAdd)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO [dbo].[InternationalLicenses]" +
@@ -283,10 +283,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -298,7 +298,7 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            InternationalLicenseToAdd._InternationalLicenseID = AddedID ?? -1;
+            InternationalLicenseToAdd._InternationalLicenseID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
@@ -334,7 +334,7 @@ namespace DataAccessTier
         public static bool UpdateInternationalLicense(DTInternationalLicense InternationalLicenseToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -386,7 +386,7 @@ namespace DataAccessTier
         public static bool DeleteInternationalLicense(int IDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "delete from [dbo].[InternationalLicenses] " +
                    " WHERE InternationalLicenseID = @InternationalLicenseID";
@@ -421,15 +421,15 @@ namespace DataAccessTier
 
         public static DateTime GetInternationalLicenseExpiretionDate(DTLicense LocalLicense)
         {
-            if(SettingsClass.AllowInternationalLicenseExpirationDateToByPassLocalOne)
+            if(DataAccessSettings.AllowInternationalLicenseExpirationDateToByPassLocalOne)
             {
-                return DateTime.Now + new TimeSpan(SettingsClass.HowManyYearsForInternationalLicense(LocalLicense.LicenseClass) * 364, 0, 0,0);
+                return DateTime.Now + new TimeSpan(DataAccessSettings.HowManyYearsForInternationalLicense() * 364, 0, 0,0);
             }
 
 
             DateTime LocalLicenseExpirationDate = AccessLicenseData.GetExpirationDateOfLicense(LocalLicense);
 
-            DateTime InternationalLicenseExpirationDate = DateTime.Now + new TimeSpan(SettingsClass.HowManyYearsForInternationalLicense(LocalLicense.LicenseClass) * 364, 0, 0,0);
+            DateTime InternationalLicenseExpirationDate = DateTime.Now + new TimeSpan(DataAccessSettings.HowManyYearsForInternationalLicense() * 364, 0, 0,0);
 
             if (LocalLicenseExpirationDate > InternationalLicenseExpirationDate)
             {
@@ -455,7 +455,7 @@ namespace DataAccessTier
         public static bool DoesHaveActiveInternationalLicenseOfTheSameClass(int DriverID, LicenseClass LicenseClass)
 
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from InternationalLicenses inner join "
                         + "Licenses on InternationalLicenses.IssuedUsingLocalLicenseID = Licenses.LicenseID "
@@ -493,7 +493,7 @@ namespace DataAccessTier
 
         public static LicenseClass? GetInternationalLicenseClass(int InternationalLicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 @"select LicenseClass from InternationalLicenses inner join "
@@ -528,7 +528,7 @@ namespace DataAccessTier
         // Use it only if very necessary 
         public static LicenseClass? GetInternationalLicenseClassByApplicationID(int ApplicationID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select Licenses.LicenseClass "
                            +"from(InternationalLicenses inner join Applications on InternationalLicenses.ApplicationID = Applications.ApplicationID) "
@@ -563,7 +563,7 @@ namespace DataAccessTier
 
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 

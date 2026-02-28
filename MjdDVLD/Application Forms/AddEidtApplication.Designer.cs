@@ -65,6 +65,9 @@ namespace MjdDVLD.Application_Forms
             this.List0_1 = new System.Windows.Forms.Label();
             this.lblLocalDrivingLicenseApplicationID = new System.Windows.Forms.Label();
             this.btnEyeTestID = new System.Windows.Forms.Button();
+            this.cmsLocalLicenseTestsChoice = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.showToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.choiseElseOneToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.btnTheoreticalTestID = new System.Windows.Forms.Button();
             this.btnDrivingTestID = new System.Windows.Forms.Button();
             this.label11 = new System.Windows.Forms.Label();
@@ -73,10 +76,18 @@ namespace MjdDVLD.Application_Forms
             this.gbInterNationalLicense = new System.Windows.Forms.GroupBox();
             this.gbLocalDrivingLicense = new System.Windows.Forms.GroupBox();
             this.SecoundErrorProvider = new System.Windows.Forms.ErrorProvider(this.components);
+            this.gbRetakeTest = new System.Windows.Forms.GroupBox();
+            this.btnRetakeTestTestID = new System.Windows.Forms.Button();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label7 = new System.Windows.Forms.Label();
+            this.cbRetakeTestTestType = new System.Windows.Forms.ComboBox();
+            this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
             ((System.ComponentModel.ISupportInitialize)(this.ErrorProvider)).BeginInit();
+            this.cmsLocalLicenseTestsChoice.SuspendLayout();
             this.gbInterNationalLicense.SuspendLayout();
             this.gbLocalDrivingLicense.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SecoundErrorProvider)).BeginInit();
+            this.gbRetakeTest.SuspendLayout();
             this.SuspendLayout();
             // 
             // txtbLastStatusDate
@@ -420,6 +431,7 @@ namespace MjdDVLD.Application_Forms
             this.cbLicenseClassLocal.Name = "cbLicenseClassLocal";
             this.cbLicenseClassLocal.Size = new System.Drawing.Size(133, 21);
             this.cbLicenseClassLocal.TabIndex = 28;
+            this.cbLicenseClassLocal.SelectedIndexChanged += new System.EventHandler(this.cbLicenseClassLocal_SelectedIndexChanged);
             // 
             // List0_1
             // 
@@ -444,6 +456,7 @@ namespace MjdDVLD.Application_Forms
             // btnEyeTestID
             // 
             this.btnEyeTestID.BackColor = System.Drawing.Color.Bisque;
+            this.btnEyeTestID.ContextMenuStrip = this.cmsLocalLicenseTestsChoice;
             this.btnEyeTestID.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnEyeTestID.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Bold);
             this.btnEyeTestID.Location = new System.Drawing.Point(159, 209);
@@ -454,9 +467,32 @@ namespace MjdDVLD.Application_Forms
             this.btnEyeTestID.UseVisualStyleBackColor = false;
             this.btnEyeTestID.Click += new System.EventHandler(this.btnEyeTestID_Click);
             // 
+            // cmsLocalLicenseTestsChoice
+            // 
+            this.cmsLocalLicenseTestsChoice.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.showToolStripMenuItem,
+            this.choiseElseOneToolStripMenuItem});
+            this.cmsLocalLicenseTestsChoice.Name = "cmsOptions";
+            this.cmsLocalLicenseTestsChoice.Size = new System.Drawing.Size(186, 48);
+            // 
+            // showToolStripMenuItem
+            // 
+            this.showToolStripMenuItem.Name = "showToolStripMenuItem";
+            this.showToolStripMenuItem.Size = new System.Drawing.Size(185, 22);
+            this.showToolStripMenuItem.Text = "Show";
+            // 
+            // choiseElseOneToolStripMenuItem
+            // 
+            this.choiseElseOneToolStripMenuItem.Name = "choiseElseOneToolStripMenuItem";
+            this.choiseElseOneToolStripMenuItem.Size = new System.Drawing.Size(185, 22);
+            this.choiseElseOneToolStripMenuItem.Text = "Choose Another Test";
+            this.choiseElseOneToolStripMenuItem.Visible = false;
+            this.choiseElseOneToolStripMenuItem.Click += new System.EventHandler(this.choiseElseOneToolStripMenuItem_Click);
+            // 
             // btnTheoreticalTestID
             // 
             this.btnTheoreticalTestID.BackColor = System.Drawing.Color.Bisque;
+            this.btnTheoreticalTestID.ContextMenuStrip = this.cmsLocalLicenseTestsChoice;
             this.btnTheoreticalTestID.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnTheoreticalTestID.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Bold);
             this.btnTheoreticalTestID.Location = new System.Drawing.Point(39, 209);
@@ -465,10 +501,12 @@ namespace MjdDVLD.Application_Forms
             this.btnTheoreticalTestID.TabIndex = 47;
             this.btnTheoreticalTestID.Text = "??";
             this.btnTheoreticalTestID.UseVisualStyleBackColor = false;
+            this.btnTheoreticalTestID.Click += new System.EventHandler(this.btnTheoreticalTestID_Click);
             // 
             // btnDrivingTestID
             // 
             this.btnDrivingTestID.BackColor = System.Drawing.Color.Bisque;
+            this.btnDrivingTestID.ContextMenuStrip = this.cmsLocalLicenseTestsChoice;
             this.btnDrivingTestID.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnDrivingTestID.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Bold);
             this.btnDrivingTestID.Location = new System.Drawing.Point(260, 209);
@@ -477,6 +515,7 @@ namespace MjdDVLD.Application_Forms
             this.btnDrivingTestID.TabIndex = 47;
             this.btnDrivingTestID.Text = "??";
             this.btnDrivingTestID.UseVisualStyleBackColor = false;
+            this.btnDrivingTestID.Click += new System.EventHandler(this.btnDrivingTestID_Click);
             // 
             // label11
             // 
@@ -539,7 +578,7 @@ namespace MjdDVLD.Application_Forms
             this.gbLocalDrivingLicense.Controls.Add(this.cbLicenseClassLocal);
             this.gbLocalDrivingLicense.Controls.Add(this.btnTheoreticalTestID);
             this.gbLocalDrivingLicense.Controls.Add(this.lblLocalDrivingLicenseApplicationID);
-            this.gbLocalDrivingLicense.Location = new System.Drawing.Point(775, 71);
+            this.gbLocalDrivingLicense.Location = new System.Drawing.Point(415, 71);
             this.gbLocalDrivingLicense.Name = "gbLocalDrivingLicense";
             this.gbLocalDrivingLicense.Size = new System.Drawing.Size(350, 320);
             this.gbLocalDrivingLicense.TabIndex = 52;
@@ -551,12 +590,73 @@ namespace MjdDVLD.Application_Forms
             this.SecoundErrorProvider.BlinkStyle = System.Windows.Forms.ErrorBlinkStyle.NeverBlink;
             this.SecoundErrorProvider.ContainerControl = this;
             // 
+            // gbRetakeTest
+            // 
+            this.gbRetakeTest.Controls.Add(this.btnRetakeTestTestID);
+            this.gbRetakeTest.Controls.Add(this.label8);
+            this.gbRetakeTest.Controls.Add(this.label7);
+            this.gbRetakeTest.Controls.Add(this.cbRetakeTestTestType);
+            this.gbRetakeTest.Location = new System.Drawing.Point(775, 71);
+            this.gbRetakeTest.Name = "gbRetakeTest";
+            this.gbRetakeTest.Size = new System.Drawing.Size(350, 320);
+            this.gbRetakeTest.TabIndex = 53;
+            this.gbRetakeTest.TabStop = false;
+            this.gbRetakeTest.Text = "Retake Test";
+            // 
+            // btnRetakeTestTestID
+            // 
+            this.btnRetakeTestTestID.BackColor = System.Drawing.Color.AntiqueWhite;
+            this.btnRetakeTestTestID.ContextMenuStrip = this.cmsLocalLicenseTestsChoice;
+            this.btnRetakeTestTestID.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
+            this.btnRetakeTestTestID.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Bold);
+            this.btnRetakeTestTestID.Location = new System.Drawing.Point(117, 173);
+            this.btnRetakeTestTestID.Name = "btnRetakeTestTestID";
+            this.btnRetakeTestTestID.Size = new System.Drawing.Size(120, 70);
+            this.btnRetakeTestTestID.TabIndex = 48;
+            this.btnRetakeTestTestID.Text = "??";
+            this.btnRetakeTestTestID.UseVisualStyleBackColor = false;
+            this.btnRetakeTestTestID.Click += new System.EventHandler(this.btnRetakeTest_Click);
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Font = new System.Drawing.Font("Tahoma", 16F, System.Drawing.FontStyle.Bold);
+            this.label8.Location = new System.Drawing.Point(134, 123);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(72, 27);
+            this.label8.TabIndex = 27;
+            this.label8.Text = "Test :";
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Font = new System.Drawing.Font("Tahoma", 16F, System.Drawing.FontStyle.Bold);
+            this.label7.Location = new System.Drawing.Point(35, 40);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(131, 27);
+            this.label7.TabIndex = 27;
+            this.label7.Text = "Test Type :";
+            // 
+            // cbRetakeTestTestType
+            // 
+            this.cbRetakeTestTestType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbRetakeTestTestType.FormattingEnabled = true;
+            this.cbRetakeTestTestType.Items.AddRange(new object[] {
+            "TheoreticalTest",
+            "DrivingTest",
+            "EyeTest"});
+            this.cbRetakeTestTestType.Location = new System.Drawing.Point(172, 45);
+            this.cbRetakeTestTestType.Name = "cbRetakeTestTestType";
+            this.cbRetakeTestTestType.Size = new System.Drawing.Size(124, 21);
+            this.cbRetakeTestTestType.TabIndex = 0;
+            // 
             // AddEidtApplication
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlLight;
             this.ClientSize = new System.Drawing.Size(1134, 442);
+            this.Controls.Add(this.gbRetakeTest);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
             this.Controls.Add(this.btnPersonID);
@@ -576,8 +676,8 @@ namespace MjdDVLD.Application_Forms
             this.Controls.Add(this.label9);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.button1);
-            this.Controls.Add(this.gbInterNationalLicense);
             this.Controls.Add(this.gbLocalDrivingLicense);
+            this.Controls.Add(this.gbInterNationalLicense);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "AddEidtApplication";
@@ -585,11 +685,14 @@ namespace MjdDVLD.Application_Forms
             this.Load += new System.EventHandler(this.AddEidtApplication_Load);
             this.Paint += new System.Windows.Forms.PaintEventHandler(this.AddEidtApplication_Paint);
             ((System.ComponentModel.ISupportInitialize)(this.ErrorProvider)).EndInit();
+            this.cmsLocalLicenseTestsChoice.ResumeLayout(false);
             this.gbInterNationalLicense.ResumeLayout(false);
             this.gbInterNationalLicense.PerformLayout();
             this.gbLocalDrivingLicense.ResumeLayout(false);
             this.gbLocalDrivingLicense.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SecoundErrorProvider)).EndInit();
+            this.gbRetakeTest.ResumeLayout(false);
+            this.gbRetakeTest.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -640,5 +743,14 @@ namespace MjdDVLD.Application_Forms
         private System.Windows.Forms.GroupBox gbInterNationalLicense;
         private System.Windows.Forms.GroupBox gbLocalDrivingLicense;
         private System.Windows.Forms.ErrorProvider SecoundErrorProvider;
+        private System.Windows.Forms.ContextMenuStrip cmsLocalLicenseTestsChoice;
+        private System.Windows.Forms.ToolStripMenuItem showToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem choiseElseOneToolStripMenuItem;
+        private System.Windows.Forms.GroupBox gbRetakeTest;
+        private System.ComponentModel.BackgroundWorker backgroundWorker1;
+        private System.Windows.Forms.Button btnRetakeTestTestID;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.ComboBox cbRetakeTestTestType;
     }
 }

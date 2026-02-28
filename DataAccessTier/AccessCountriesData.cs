@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
@@ -68,7 +68,7 @@ namespace DataAccessTier
         */
         public static DTCountry Find(int CountryID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                   " [CountryName]" +
@@ -144,7 +144,7 @@ namespace DataAccessTier
         */
         public static bool IsExist(int CountryID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from Countries where  CountryID =  @CountryID";
 
@@ -177,7 +177,7 @@ namespace DataAccessTier
 
         public static DataTable ListAllCountries()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                   " [CountryID]" +
@@ -213,7 +213,7 @@ namespace DataAccessTier
             if (string.IsNullOrEmpty(CountryToAdd.CountryName))
                 return null;
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO [dbo].[Countries]" +
@@ -232,10 +232,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -247,7 +247,7 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            CountryToAdd._CountryID = AddedID ?? -1;
+            CountryToAdd._CountryID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
@@ -278,7 +278,7 @@ namespace DataAccessTier
         public static bool UpdateCountry(DTCountry CountryToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -320,7 +320,7 @@ namespace DataAccessTier
         public static bool DeleteCountry(int CountryIDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 

@@ -14,6 +14,8 @@ namespace MjdDVLD
         [STAThread]
         static void Main()
         {
+            // firing the SQL host so it can be ready when the user actually try's to Login 
+            BusinessTier.DVLDApp.LoadTheDBConnection();  
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new LogInScreen());

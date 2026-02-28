@@ -49,15 +49,17 @@
     <Compile Include="AccessLicenseData.cs" />
     <Compile Include="AccessLocalDrivingLicenseApplicationData.cs" />
     <Compile Include="AccessPersonData.cs" />
-    <Compile Include="AccessTestData.cs" />
+    <Compile Include="AccessDrivingTestData.cs" />
+    <Compile Include="AccessTheoreticalTestData.cs" />
     <Compile Include="AccessUserData.cs" />
     <Compile Include="AccessEyeTestData.cs" />
+    <Compile Include="DataAccessSettingsClass.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GeneralsAndSettings\Generale.csproj">
+    <ProjectReference Include="..\GeneralsAndSettings\General.csproj">
       <Project>{3a964faf-41e2-4377-9f17-baadf4e65ed0}</Project>
-      <Name>Generale</Name>
+      <Name>General</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

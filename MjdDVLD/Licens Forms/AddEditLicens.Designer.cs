@@ -37,7 +37,7 @@ namespace MjdDVLD.Licenses_Forms
             this.btnApplicationID = new System.Windows.Forms.Button();
             this.btnDriverID = new System.Windows.Forms.Button();
             this.label4 = new System.Windows.Forms.Label();
-            this.cbLicenceClass = new System.Windows.Forms.ComboBox();
+            this.cbLicenseClass = new System.Windows.Forms.ComboBox();
             this.label10 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
@@ -82,7 +82,7 @@ namespace MjdDVLD.Licenses_Forms
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Tahoma", 16F, System.Drawing.FontStyle.Bold);
-            this.label2.Location = new System.Drawing.Point(27, 106);
+            this.label2.Location = new System.Drawing.Point(27, 157);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(192, 27);
             this.label2.TabIndex = 0;
@@ -92,7 +92,7 @@ namespace MjdDVLD.Licenses_Forms
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Tahoma", 16F, System.Drawing.FontStyle.Bold);
-            this.label3.Location = new System.Drawing.Point(27, 157);
+            this.label3.Location = new System.Drawing.Point(27, 106);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(136, 27);
             this.label3.TabIndex = 0;
@@ -103,7 +103,7 @@ namespace MjdDVLD.Licenses_Forms
             this.btnApplicationID.BackColor = System.Drawing.Color.Bisque;
             this.btnApplicationID.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnApplicationID.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Bold);
-            this.btnApplicationID.Location = new System.Drawing.Point(214, 105);
+            this.btnApplicationID.Location = new System.Drawing.Point(214, 157);
             this.btnApplicationID.Name = "btnApplicationID";
             this.btnApplicationID.Size = new System.Drawing.Size(66, 34);
             this.btnApplicationID.TabIndex = 1;
@@ -116,7 +116,7 @@ namespace MjdDVLD.Licenses_Forms
             this.btnDriverID.BackColor = System.Drawing.Color.Bisque;
             this.btnDriverID.FlatStyle = System.Windows.Forms.FlatStyle.Popup;
             this.btnDriverID.Font = new System.Drawing.Font("Tahoma", 8F, System.Drawing.FontStyle.Bold);
-            this.btnDriverID.Location = new System.Drawing.Point(156, 157);
+            this.btnDriverID.Location = new System.Drawing.Point(156, 105);
             this.btnDriverID.Name = "btnDriverID";
             this.btnDriverID.Size = new System.Drawing.Size(66, 34);
             this.btnDriverID.TabIndex = 2;
@@ -134,11 +134,12 @@ namespace MjdDVLD.Licenses_Forms
             this.label4.TabIndex = 0;
             this.label4.Text = "Licence Class : ";
             // 
-            // cbLicenceClass
+            // cbLicenseClass
             // 
-            this.cbLicenceClass.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cbLicenceClass.FormattingEnabled = true;
-            this.cbLicenceClass.Items.AddRange(new object[] {
+            this.cbLicenseClass.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbLicenseClass.Enabled = false;
+            this.cbLicenseClass.FormattingEnabled = true;
+            this.cbLicenseClass.Items.AddRange(new object[] {
             "Motorcycles",
             "LargeMotorcycles",
             "RegularCar",
@@ -146,11 +147,11 @@ namespace MjdDVLD.Licenses_Forms
             "AgriculturalVehicles",
             "Buses",
             "HeavyVhicles"});
-            this.cbLicenceClass.Location = new System.Drawing.Point(202, 214);
-            this.cbLicenceClass.Name = "cbLicenceClass";
-            this.cbLicenceClass.Size = new System.Drawing.Size(126, 21);
-            this.cbLicenceClass.TabIndex = 3;
-            this.cbLicenceClass.SelectedIndexChanged += new System.EventHandler(this.cbLicenceClass_SelectedIndexChanged);
+            this.cbLicenseClass.Location = new System.Drawing.Point(202, 214);
+            this.cbLicenseClass.Name = "cbLicenseClass";
+            this.cbLicenseClass.Size = new System.Drawing.Size(126, 21);
+            this.cbLicenseClass.TabIndex = 3;
+            this.cbLicenseClass.SelectedIndexChanged += new System.EventHandler(this.cbLicenceClass_SelectedIndexChanged);
             // 
             // label10
             // 
@@ -326,7 +327,7 @@ namespace MjdDVLD.Licenses_Forms
             this.Controls.Add(this.label6);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.label10);
-            this.Controls.Add(this.cbLicenceClass);
+            this.Controls.Add(this.cbLicenseClass);
             this.Controls.Add(this.btnDriverID);
             this.Controls.Add(this.btnApplicationID);
             this.Controls.Add(this.lblCreatedByUserID);
@@ -358,7 +359,7 @@ namespace MjdDVLD.Licenses_Forms
         private System.Windows.Forms.Button btnApplicationID;
         private System.Windows.Forms.Button btnDriverID;
         private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.ComboBox cbLicenceClass;
+        private System.Windows.Forms.ComboBox cbLicenseClass;
         private System.Windows.Forms.Label label10;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label6;

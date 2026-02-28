@@ -76,11 +76,11 @@
     <Compile Include="Driver Forms\AddEidtDriver.Designer.cs">
       <DependentUpon>AddEidtDriver.cs</DependentUpon>
     </Compile>
-    <Compile Include="Eye Test Forms\AddEditEyeTest.cs">
+    <Compile Include="Test Forms\AddEditTest.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Eye Test Forms\AddEditEyeTest.Designer.cs">
-      <DependentUpon>AddEditEyeTest.cs</DependentUpon>
+    <Compile Include="Test Forms\AddEditTest.Designer.cs">
+      <DependentUpon>AddEditTest.cs</DependentUpon>
     </Compile>
     <Compile Include="Licens Forms\AddEditLicens.cs">
       <SubType>Form</SubType>
@@ -138,8 +138,8 @@
     <EmbeddedResource Include="Driver Forms\AddEidtDriver.resx">
       <DependentUpon>AddEidtDriver.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Eye Test Forms\AddEditEyeTest.resx">
-      <DependentUpon>AddEditEyeTest.cs</DependentUpon>
+    <EmbeddedResource Include="Test Forms\AddEditTest.resx">
+      <DependentUpon>AddEditTest.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Licens Forms\AddEditLicens.resx">
       <DependentUpon>AddEditLicens.cs</DependentUpon>
@@ -193,9 +193,9 @@
       <Project>{15871b7b-6800-4a12-879e-2023feea4ec0}</Project>
       <Name>BusinessTier</Name>
     </ProjectReference>
-    <ProjectReference Include="..\GeneralsAndSettings\Generale.csproj">
+    <ProjectReference Include="..\GeneralsAndSettings\General.csproj">
       <Project>{3a964faf-41e2-4377-9f17-baadf4e65ed0}</Project>
-      <Name>Generale</Name>
+      <Name>General</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

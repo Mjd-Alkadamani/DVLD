@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlClient;
 using System.Data;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
@@ -33,7 +33,7 @@ namespace DataAccessTier
     {
         public static DTDriver Find(int DriverID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT"
                       + " [PersonID]"
@@ -78,7 +78,7 @@ namespace DataAccessTier
 
         public static DTDriver FindByPersonID(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT"
                       + "[DriverID]"
@@ -123,7 +123,7 @@ namespace DataAccessTier
         
         public static int? GetDriverID(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT"
                       + "[DriverID]"
@@ -161,7 +161,7 @@ namespace DataAccessTier
 
         public static bool IsExist(int DriverID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from Drivers where DriverID =  @DriverID";
 
@@ -194,7 +194,7 @@ namespace DataAccessTier
 
         public static bool IsExistByPersonID(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from Drivers where PersonID =  @PersonID";
 
@@ -237,9 +237,9 @@ namespace DataAccessTier
 
         public static bool DoesDriverHaveLicenseOfClass(int DriverID, LicenseClass LicenseClass)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
-            string Query = @"select top 1 isExist = 1 from Drivers where DriverID =  @DriverID and LicenseClass = @LicenseClass ";
+            string Query = @"select top 1 isExist = 1 from [Licenses] where DriverID =  @DriverID and LicenseClass = @LicenseClass ";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
             Command.Parameters.AddWithValue("@DriverID", DriverID);
@@ -271,7 +271,7 @@ namespace DataAccessTier
 
         public static int? GetDriverPersonID(int DriverID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT top 1"
                       + " [PersonID]"
@@ -320,7 +320,7 @@ namespace DataAccessTier
 
         public static DataTable ListAllDrivers()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT[DriverID] "
                       + ",[PersonID]"
@@ -355,7 +355,7 @@ namespace DataAccessTier
         private static int? _AddNewDriver(ref DTDriver DriverToAdd)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO [dbo].[Drivers]" +
@@ -377,10 +377,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -392,7 +392,7 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            DriverToAdd._DriverID = AddedID ?? -1;
+            DriverToAdd._DriverID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
@@ -422,7 +422,7 @@ namespace DataAccessTier
         public static bool UpdateDriver(DTDriver DriverToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -468,7 +468,7 @@ namespace DataAccessTier
         public static bool DeleteDriver(int DriverIDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 

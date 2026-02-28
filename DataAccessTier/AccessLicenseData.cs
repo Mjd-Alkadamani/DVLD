@@ -5,13 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using Generale;
+using General;
 
 
 namespace DataAccessTier
 {
 
-    internal static class LicenseClassExtentionsm
+    internal static class LicenseClassExtentions
     {
         internal static int ToDBValue(this LicenseClass License)
         { return (int)License; }
@@ -42,7 +42,7 @@ namespace DataAccessTier
 
     }
 
-    internal static class IssueReasonExtentionsm
+    internal static class IssueReasonExtentions
     {
         internal static int ToDBValue(this IssueReason IssueReason)
         { return (int)IssueReason; }
@@ -100,7 +100,7 @@ namespace DataAccessTier
     {
         public static DTLicense Find(int LicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + "[LocalDrivingLicenseApplicationID]"
@@ -156,9 +156,9 @@ namespace DataAccessTier
 
         }
 
-        public static DTLicense FindLastActiveLicense(int DriverID,LicenseClass LicenseClass)
+        public static DTLicense FindTheActiveLicense(int DriverID,LicenseClass LicenseClass)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + "[LicenseID]"
@@ -214,9 +214,46 @@ namespace DataAccessTier
 
         }
         
+        public static bool DoseHaveActiveLicense(int DriverID,LicenseClass LicenseClass)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT top 1 DoseExist = 1"
+                    + " FROM[dbo].[Licenses]"
+                    + " where DriverID = @DriverID and LicenseClass = @LicenseClass and IsActive = @IsActive";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@DriverID", DriverID);
+            Command.Parameters.AddWithValue("@LicenseClass", LicenseClass.ToDBValue());
+            Command.Parameters.AddWithValue("@IsActive", true);
+            bool IsExist = false;
+
+            try
+            {
+                Connection.Open();
+
+                object Exist = Command.ExecuteScalar();
+
+                if (Exist != null)
+                    IsExist = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return IsExist;
+
+        }
+
         public static bool IsExist(int LicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from Licenses where  LicenseID =  @LicenseID";
 
@@ -249,7 +286,7 @@ namespace DataAccessTier
 
         public static DataTable ListAllLicenses()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + "[LicenseID]"
@@ -291,7 +328,7 @@ namespace DataAccessTier
         private static int? _AddNewLicense(ref DTLicense LicenseToAdd)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO [dbo].[Licenses]" +
@@ -325,10 +362,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -340,7 +377,7 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            LicenseToAdd._LicenseID = AddedID ?? -1;
+            LicenseToAdd._LicenseID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
@@ -376,7 +413,7 @@ namespace DataAccessTier
         public static bool UpdateLicense(DTLicense LicenseToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -431,10 +468,94 @@ namespace DataAccessTier
             return DoesUpdateSucceded;
         }
 
+        internal static bool DeactivateLicense(int LicenseIDToDeactivate)
+        {
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Licenses]" +
+              "SET " +
+              "[IsActive]        = @IsActive" +
+                       " WHERE LicenseID = @LicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@IsActive", false);
+            
+            Command.Parameters.AddWithValue("@LicenseID", LicenseIDToDeactivate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        internal static bool ActivateLicense(int LicenseIDToActivate)
+        {
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Licenses]" +
+              "SET " +
+              "[IsActive]        = @IsActive" +
+                       " WHERE LicenseID = @LicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@IsActive", true);
+
+            Command.Parameters.AddWithValue("@LicenseID", LicenseIDToActivate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
         public static bool DeleteLicense(int IDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "delete from [dbo].[Licenses]" +
                    " WHERE LicenseID = @LicenseID";
@@ -469,7 +590,7 @@ namespace DataAccessTier
 
         public static DateTime GetExpirationDateOfLicense(int LicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + "[ExpirationDate]"
@@ -511,7 +632,7 @@ namespace DataAccessTier
 
         public static LicenseClass? GetLicenseClass(int LicenseID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT "
                   + "[LicenseClass]"

@@ -112,13 +112,13 @@ namespace MjdDVLD
             _LodedDataTable = table;
 
             cbColumns.Items.Add("Nan");
-
+            
             foreach (DataColumn C in table.Columns)
             {
                 cbColumns.Items.Add(C.ColumnName);
             }
 
-            cbColumns.SelectedIndex = 0;
+            cbColumns.SelectedIndex = 0; 
 
             if (!permissions.DoesHavePermissionTo(Permissions.Permission.Add))
                 cmsOptions.Items[0].Visible= false  ; // Add
@@ -255,15 +255,15 @@ namespace MjdDVLD
             {
                 if(DateTime.TryParse(mtbInput.Text,out DateTime dateTime))
                 _LoadDGV(new DataView(_LodedDataTable,
-                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " > " + $"Convert('{(dateTime - new TimeSpan(24, 0, 0)).ToShortDateString()}','System.DateTime') " + " and " +
-                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " < " + $"Convert('{(dateTime + new TimeSpan(24, 0, 0)).ToShortDateString()}','System.DateTime') ",
+                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " >= " + $"Convert('{(dateTime - new TimeSpan(24, 0, 0)).ToShortDateString()}','System.DateTime') " + " and " +
+                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " <= " + $"Convert('{(dateTime + new TimeSpan(24, 0, 0)).ToShortDateString()}','System.DateTime') ",
                     cbColumns.Items[cbColumns.SelectedIndex].ToString() + (cbDescending.Checked ? " desc" : " asc"), DataViewRowState.Unchanged));
             }
 
             else
                 _LoadDGV(new DataView(_LodedDataTable,
-                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " > " + (Convert.ToInt32(mtbInput.Text) - 1).ToString() + " and " +
-                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " < " + (Convert.ToInt32(mtbInput.Text) + 1).ToString(),
+                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " >= " + (Convert.ToInt32(mtbInput.Text) - 1).ToString() + " and " +
+                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + " <= " + (Convert.ToInt32(mtbInput.Text) + 1).ToString(),
                    cbColumns.Items[cbColumns.SelectedIndex].ToString() + (cbDescending.Checked ? " desc" : " asc"), DataViewRowState.Unchanged));
             
         }
@@ -310,6 +310,14 @@ namespace MjdDVLD
             OnRefrashButtonClick?.Invoke(this, ref _LodedDataTable);
 
             _ReloadDGV();
+        }
+
+        private void ListAllForm_KeyDown(object sender, KeyEventArgs e)
+        {
+            if(e.KeyData == Keys.Escape)
+            {
+                this.Close();
+            }
         }
     }
 

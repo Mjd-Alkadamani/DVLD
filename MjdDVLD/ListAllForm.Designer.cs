@@ -36,13 +36,13 @@ namespace MjdDVLD
             this.deleteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.editToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.showCardToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.refrashToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.lblListName = new System.Windows.Forms.Label();
             this.cbColumns = new System.Windows.Forms.ComboBox();
             this.mtbInput = new System.Windows.Forms.MaskedTextBox();
             this.cbTrueFalse = new System.Windows.Forms.CheckBox();
             this.cbDescending = new System.Windows.Forms.CheckBox();
             this.btnOk = new System.Windows.Forms.Button();
-            this.refrashToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.dgvMain)).BeginInit();
             this.cmsOptions.SuspendLayout();
             this.SuspendLayout();
@@ -74,6 +74,7 @@ namespace MjdDVLD
             // addToolStripMenuItem
             // 
             this.addToolStripMenuItem.Name = "addToolStripMenuItem";
+            this.addToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F1;
             this.addToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.addToolStripMenuItem.Text = "Add";
             this.addToolStripMenuItem.Click += new System.EventHandler(this.addToolStripMenuItem_Click);
@@ -81,6 +82,7 @@ namespace MjdDVLD
             // deleteToolStripMenuItem
             // 
             this.deleteToolStripMenuItem.Name = "deleteToolStripMenuItem";
+            this.deleteToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.Delete;
             this.deleteToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.deleteToolStripMenuItem.Text = "Delete";
             this.deleteToolStripMenuItem.Click += new System.EventHandler(this.deleteToolStripMenuItem_Click);
@@ -88,6 +90,7 @@ namespace MjdDVLD
             // editToolStripMenuItem
             // 
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
+            this.editToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F3;
             this.editToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.editToolStripMenuItem.Text = "Edit";
             this.editToolStripMenuItem.Click += new System.EventHandler(this.editToolStripMenuItem_Click);
@@ -95,9 +98,18 @@ namespace MjdDVLD
             // showCardToolStripMenuItem
             // 
             this.showCardToolStripMenuItem.Name = "showCardToolStripMenuItem";
+            this.showCardToolStripMenuItem.ShortcutKeys = System.Windows.Forms.Keys.F2;
             this.showCardToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.showCardToolStripMenuItem.Text = "Show Card";
             this.showCardToolStripMenuItem.Click += new System.EventHandler(this.showCardToolStripMenuItem_Click);
+            // 
+            // refrashToolStripMenuItem
+            // 
+            this.refrashToolStripMenuItem.Name = "refrashToolStripMenuItem";
+            this.refrashToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.R)));
+            this.refrashToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.refrashToolStripMenuItem.Text = "Refrash";
+            this.refrashToolStripMenuItem.Click += new System.EventHandler(this.refrashToolStripMenuItem_Click);
             // 
             // lblListName
             // 
@@ -115,7 +127,7 @@ namespace MjdDVLD
             this.cbColumns.Location = new System.Drawing.Point(183, 51);
             this.cbColumns.Name = "cbColumns";
             this.cbColumns.Size = new System.Drawing.Size(128, 21);
-            this.cbColumns.TabIndex = 2;
+            this.cbColumns.TabIndex = 3;
             this.cbColumns.SelectedIndexChanged += new System.EventHandler(this.cbColumns_SelectedIndexChanged);
             // 
             // mtbInput
@@ -124,7 +136,7 @@ namespace MjdDVLD
             this.mtbInput.Mask = " ";
             this.mtbInput.Name = "mtbInput";
             this.mtbInput.Size = new System.Drawing.Size(122, 20);
-            this.mtbInput.TabIndex = 3;
+            this.mtbInput.TabIndex = 4;
             this.mtbInput.TextChanged += new System.EventHandler(this.mtbInput_TextChanged);
             // 
             // cbTrueFalse
@@ -145,7 +157,7 @@ namespace MjdDVLD
             this.cbDescending.Name = "cbDescending";
             this.cbDescending.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
             this.cbDescending.Size = new System.Drawing.Size(91, 17);
-            this.cbDescending.TabIndex = 5;
+            this.cbDescending.TabIndex = 2;
             this.cbDescending.Text = "Descending";
             this.cbDescending.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.cbDescending.UseVisualStyleBackColor = true;
@@ -153,20 +165,14 @@ namespace MjdDVLD
             // 
             // btnOk
             // 
+            this.btnOk.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.btnOk.Location = new System.Drawing.Point(655, 392);
             this.btnOk.Name = "btnOk";
             this.btnOk.Size = new System.Drawing.Size(75, 23);
-            this.btnOk.TabIndex = 6;
+            this.btnOk.TabIndex = 5;
             this.btnOk.Text = "Ok";
             this.btnOk.UseVisualStyleBackColor = true;
             this.btnOk.Click += new System.EventHandler(this.btnOk_Click);
-            // 
-            // refrashToolStripMenuItem
-            // 
-            this.refrashToolStripMenuItem.Name = "refrashToolStripMenuItem";
-            this.refrashToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.refrashToolStripMenuItem.Text = "Refrash";
-            this.refrashToolStripMenuItem.Click += new System.EventHandler(this.refrashToolStripMenuItem_Click);
             // 
             // ListAllForm
             // 
@@ -180,8 +186,10 @@ namespace MjdDVLD
             this.Controls.Add(this.lblListName);
             this.Controls.Add(this.dgvMain);
             this.Controls.Add(this.cbTrueFalse);
+            this.KeyPreview = true;
             this.Name = "ListAllForm";
             this.Text = "ListAllForm";
+            this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.ListAllForm_KeyDown);
             this.Resize += new System.EventHandler(this.ListAllForm_Resize);
             ((System.ComponentModel.ISupportInitialize)(this.dgvMain)).EndInit();
             this.cmsOptions.ResumeLayout(false);

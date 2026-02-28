@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data;
 using System.Data.SqlClient;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
@@ -33,7 +33,7 @@ namespace DataAccessTier
     {
         public static DTUser Find(string UserName)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                   " [UserID]" +
@@ -71,9 +71,36 @@ namespace DataAccessTier
 
         }
 
+        public static void LoadTheDBConnection()
+        {
+            _ = Task.Run(() =>
+            {
+                SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+                string Query = "";
+
+                SqlCommand Command = new SqlCommand(Query, Connection);
+
+                try
+                {
+                    Connection.Open();
+                }
+                catch (Exception ex)
+                {
+
+                }
+                finally
+                {
+                    Connection.Close();
+                }
+
+            });
+
+        }
+
         public static bool IsExistAndActiveByUserNameAndPassword(string UserName, string Password)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT IsFound = 1 " +
                   " FROM [dbo].[Users]" +
@@ -112,7 +139,7 @@ namespace DataAccessTier
 
         public static bool IsExistAndActiveByUserIDAndPassword(string UserID, string Password)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT IsFound = 1 " +
                   " FROM [dbo].[Users]" +
@@ -151,7 +178,7 @@ namespace DataAccessTier
 
         public static DTUser Find(int UserID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                   " [PersonID]" +
@@ -198,7 +225,7 @@ namespace DataAccessTier
 
         public static bool IsExist(string UserName)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "select top 1 isExist = 1 from Users where  UserName =  @UserName";
 
@@ -230,7 +257,7 @@ namespace DataAccessTier
 
         public static bool IsExist(int UserID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from Users where  UserID =  @UserID";
 
@@ -263,7 +290,7 @@ namespace DataAccessTier
 
         public static bool IsExistByPersonID(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from Users where  PersonID =  @PersonID";
 
@@ -296,7 +323,7 @@ namespace DataAccessTier
         
         public static DataTable ListAllUsers()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                   " [UserID]" +
@@ -335,7 +362,7 @@ namespace DataAccessTier
             if (string.IsNullOrEmpty(UserToAdd.UserName) || string.IsNullOrEmpty(UserToAdd.Password))
             { return null; }
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO [dbo].[Users]" +
@@ -359,10 +386,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int)DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch (Exception ex)
@@ -374,7 +401,7 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            UserToAdd._UserID = AddedID ?? -1;
+            UserToAdd._UserID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
@@ -406,7 +433,7 @@ namespace DataAccessTier
         public static bool UpdateUser(DTUser UserToUpdate)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -454,7 +481,7 @@ namespace DataAccessTier
         public static bool DeleteUser(int UserIDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -492,7 +519,7 @@ namespace DataAccessTier
         public static bool DeleteUser(string UserNameToDelete)
         {
         
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
               "delete from [dbo].[Users]" +

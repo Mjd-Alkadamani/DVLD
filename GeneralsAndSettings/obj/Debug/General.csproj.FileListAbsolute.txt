@@ -1,0 +1,2 @@
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\General.csproj.AssemblyReference.cache
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\General.csproj.CoreCompileInputs.cache

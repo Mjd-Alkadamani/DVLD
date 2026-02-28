@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BusinessTier;
-using Generale;
+using General;
 
 
 /// <summary>
@@ -19,9 +19,11 @@ using Generale;
 
 namespace MjdDVLD.Application_Forms
 {
+
     public partial class AddEidtApplication : Form
     {
-        private bool _ShowOnly;
+
+        private bool _ShowOnly = false;
 
         public AddEidtApplication(int ApplicationIDToEdit = -1, bool ShowOnly = false)
         {
@@ -29,11 +31,10 @@ namespace MjdDVLD.Application_Forms
 
             _ResetAllListVisiblty();
 
-
             _ShowOnly = ShowOnly;
 
             if (ApplicationIDToEdit != -1)
-            {
+            { // Edit //
                 BusinessTier.Application ApplicationToEdit = DVLDApp.MangeApplications.Find(ApplicationIDToEdit);
 
                 if (ApplicationToEdit != null)
@@ -43,9 +44,7 @@ namespace MjdDVLD.Application_Forms
                     btnPersonID.Enabled = false;
                     cbApplicationType.Enabled = false;
 
-                    // The tag will hold the oregenal statuse //
-                    cbApplicationStatus.Tag = (Convert.ToInt32(ApplicationToEdit.ApplicationStatus)-1).ToString();
-
+                    
                     if (ApplicationToEdit.ApplicationStatus != ApplicationStatus.New) // Canseled or Complited
                     {
                         cbApplicationStatus.Enabled = false;
@@ -55,9 +54,9 @@ namespace MjdDVLD.Application_Forms
 
                     if (ShowOnly)
                     {
+                        cbApplicationStatus.Enabled = false;
                         btnSave.Visible = false;
                         btnCancel.Text = "Ok";
-                        cbApplicationStatus.Enabled = false;
                         txtbPaidFees.Enabled = false;
                     }
                     _CheckTypeAndSetMode();
@@ -71,9 +70,11 @@ namespace MjdDVLD.Application_Forms
 
             }
             else
-            {
-                txtbApplicationDate.Text = DateTime.Now.ToShortDateString();
-                txtbLastStatusDate.Text = DateTime.Now.ToShortDateString();
+            { // Add New //
+                cbApplicationStatus.SelectedIndex = 1;
+                cbApplicationStatus.Enabled = false;
+                txtbApplicationDate.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                txtbLastStatusDate.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                 cbApplicationType.SelectedIndex = 0;
                 cbApplicationStatus.SelectedIndex = 0;
                 lblCreatedByUserID.Text = DVLDApp.LogedInUser.UserID.ToString();
@@ -96,7 +97,7 @@ namespace MjdDVLD.Application_Forms
         private void AddEidtApplication_Load(object sender, EventArgs e)
         {
             this.Size = new Size(790, 480);
-            gbLocalDrivingLicense.Location = new Point(415, 71);
+            gbRetakeTest.Location = new Point(415, 71);
 
         }
 
@@ -104,12 +105,17 @@ namespace MjdDVLD.Application_Forms
         {
             lblApplicationID.Text = ApplicationToLoad.ApplicationID.ToString();
             btnPersonID.Text = ApplicationToLoad.ApplicantPersonID.ToString();
-            cbApplicationType.SelectedIndex = (int)ApplicationToLoad.ApplicationTypeID - 1;
+            cbApplicationType.SelectedIndex = (int)ApplicationToLoad.ApplicationType - 1;
             cbApplicationStatus.SelectedIndex = (int)ApplicationToLoad.ApplicationStatus - 1;
-            txtbApplicationDate.Text = ApplicationToLoad.ApplicationDate.ToShortDateString();
-            txtbLastStatusDate.Text = ApplicationToLoad.LastStatusDate.ToShortDateString();
+
+            cbApplicationStatus.Tag = ((int)ApplicationToLoad.ApplicationStatus - 1).ToString(); // the tag will always store the old values // 
+
+            txtbApplicationDate.Text = ApplicationToLoad.ApplicationDate.ToString("dd/MM/yyyy HH:mm");
+            txtbLastStatusDate.Text = ApplicationToLoad.LastStatusDate.ToString("dd/MM/yyyy HH:mm");
             lblCreatedByUserID.Text = ApplicationToLoad.CreatedByUserID.ToString();
+
             txtbPaidFees.Text = ApplicationToLoad.PaidFees.ToString();
+            txtbPaidFees.Tag = ApplicationToLoad.PaidFees.ToString();
         }
 
         private void btnPersonID_Click(object sender, EventArgs e)
@@ -120,7 +126,7 @@ namespace MjdDVLD.Application_Forms
         private void btnPersonID_Click_1(object sender, EventArgs e)
         {
             ListAllForm ApplicationsList = new ListAllForm
-             (DVLDApp.MangePeople.ListAllPeople(), "Applications", new ListAllForm.Permissions(), true);
+             (DVLDApp.MangePeople.ListAllPeople(), "People", new ListAllForm.Permissions(), true);
 
             ApplicationsList.OnOkButtonClick += _ChangePersonID;
 
@@ -160,14 +166,16 @@ namespace MjdDVLD.Application_Forms
 
         private bool _ValidateEditApplication()
         {
-            decimal NeededFee = SettingsClass.GetInternationalLicensIssuanceFees
+            SecoundErrorProvider.Clear();
+
+            decimal NeededFee = SettingsClass.GetInternationalLicenseIssuanceFees
                 ((LicenseClass)cbLicenseClassInterntional.SelectedIndex + 1) +
                 DVLDApp.MangeApplications.GetApplicationFees((ApplicationType)cbApplicationType.SelectedIndex + 1);
 
             if (Convert.ToDecimal(txtbPaidFees.Text) < NeededFee)
             {
                 MessageBox.Show("Payed fees is not enough\nTotal Application fees is :" + NeededFee.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                ErrorProvider.SetError(txtbPaidFees, NeededFee.ToString() + " is needed ");
+                SecoundErrorProvider.SetError(txtbPaidFees, NeededFee.ToString() + " is needed ");
 
                 return false;
             }
@@ -197,43 +205,108 @@ namespace MjdDVLD.Application_Forms
         }
 
         private void btnSave_Click(object sender, EventArgs e)
-        {
+        {         
             ErrorProvider.Clear();
+            
+            if (lblApplicationID.Text != "??")
+            { // Edit //
 
-            if(string.IsNullOrEmpty(txtbPaidFees.Text))
-            {
-                ErrorProvider.SetError(txtbPaidFees, "This value can not be empty.");
-                return;
+                if (cbApplicationStatus.SelectedIndex == 1)
+                    if (MessageBox.Show("Are you sure you want to Cancele this application out.", "Are you sure?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                        return;
+
+                // it will never happen cus the paid fees is unEnabled //
+                if (Convert.ToDouble(txtbPaidFees.Tag.ToString()) > Convert.ToDouble(txtbPaidFees.Text))
+                {
+                    MessageBox.Show("You can not decrees the amont of the mony on payed on the aaplication.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                if (cbApplicationStatus.SelectedIndex == 2 && Convert.ToDecimal(txtbPaidFees.Text) < SettingsClass.GetApplicationFees((ApplicationType)(cbApplicationType.SelectedIndex + 1)))
+                { // 225 2079 //
+                    ErrorProvider.SetError(txtbPaidFees, "You have to pay the application full fees.");
+                    return;
+                }
+
+                switch (cbApplicationType.SelectedIndex)  
+                {
+                    case 0: //License Issuance
+                        _EditOnIssuingLocalLicenseMode();
+                        break;
+                    case 1: //Retake Test
+
+                        break;
+                    case 2: //Renew Driving License
+                        break;
+                    case 3: //Missing Replacement
+                        break;
+                    case 4: //Damaged Replacement
+                        break;
+                    case 5: //Release License
+                        break;
+                    case 6: //Issuing International License
+                        
+                        break;
+
+                }
             }
+            else
+            { // Add New //
 
-            if(btnPersonID.Text == "??")
-            {
-                ErrorProvider.SetError(btnPersonID, "You have to choois a person.");
-                return;
-            }
+                if (cbApplicationStatus.SelectedIndex == 1)
+                    if (MessageBox.Show("Are you sure you want to Cancele this application out.", "Are you sure?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+                        return;
 
 
-            switch(cbApplicationType.SelectedIndex) // the _Save...() functions should close the form if secceded // 
-            {
-                case 0: //License Issuance
-                    break;
-                case 1: //Retake Test
-                    break;
-                case 2: //Renew Driving License
-                    break;
-                case 3: //Missing Replacement
-                    break;
-                case 4: //Damaged Replacement
-                    break;
-                case 5: //Release License
-                    break;
-                case 6: //Issuing International License
-                    _SaveInInternationalLicensesMode();
-                    break;
+                if (string.IsNullOrEmpty(txtbPaidFees.Text))
+                {
+                    ErrorProvider.SetError(txtbPaidFees, "Invalid value.");
+                    return;
+                }
 
-            }
-                       
+                if (btnPersonID.Text == "??")
+                {
+                    ErrorProvider.SetError(btnPersonID, "You have to choois a person.");
+                    return;
+                }
+
+                if (cbApplicationStatus.SelectedIndex != 0 && cbApplicationType.SelectedIndex != 1) // just in case //
+                {
+                    ErrorProvider.SetError(cbApplicationStatus, "If the appliction if new you have to select the \" (New) On Going\".");
+                    return;
+                }
+
+                if(cbApplicationStatus.SelectedIndex == 2 && Convert.ToDecimal(txtbPaidFees.Text) < SettingsClass.GetApplicationFees((ApplicationType)(cbApplicationType.SelectedIndex + 1)))
+                {
+                    ErrorProvider.SetError(txtbPaidFees, "You have to pay the application full fees.");
+                    return;
+                }
+
+
+                switch (cbApplicationType.SelectedIndex) // the _Save...() functions should close the form if secceded // 
+                {
+                    case 0: //License Issuance
+                        _SaveInLocalLicensesMode();
+                        break;
+                    case 1: //Retake Test
+                        _SaveInRetakeTestMode();
+                        break;
+                    case 2: //Renew Driving License
+                        break;
+                    case 3: //Missing Replacement
+                        break;
+                    case 4: //Damaged Replacement
+                        break;
+                    case 5: //Release License
+                        break;
+                    case 6: //Issuing International License
+                        _SaveInInternationalLicensesMode();
+                        break;
+
+                }
+            }     
         }
+        
         private BusinessTier.Application _ToApplication()
         {
             if(lblApplicationID.Text != "??")
@@ -270,14 +343,29 @@ namespace MjdDVLD.Application_Forms
             SecoundErrorProvider.Clear();
             btnSave.Enabled = true;
 
+            cbApplicationStatus.SelectedIndex = 0;
+            cbApplicationStatus.Enabled = false;
 
+            //  Local License //
+            gbLocalDrivingLicense.Visible = false;
             //     International License  //
             gbInterNationalLicense.Visible = false;
             gbInterNationalLicense.Enabled = true;
             _LocalLicense = null;
             _DriverID = -1;
-            //  Local License //
+
+            //     Issuing Local License  //
             gbLocalDrivingLicense.Visible = false;
+            gbLocalDrivingLicense.Enabled = true;
+            NewEyeTest = null;
+            NewTheoreticalTest = null;
+            NewDrivingTest = null;
+
+            //     Retake Test  //
+            gbRetakeTest.Visible = false;
+            gbRetakeTest.Enabled = true;
+            RetakeTestTest = null;
+
 
         }
 
@@ -288,7 +376,11 @@ namespace MjdDVLD.Application_Forms
 
             switch (cbApplicationType.SelectedIndex)
             {
+                case 0:
+                    _SetLicenseIssuanceMode();
+                    break;
                 case 1:
+                    _SetRetakeTestMode();
                     break;
                 case 6:
                     _SetInternationalLicensesMode();
@@ -301,12 +393,7 @@ namespace MjdDVLD.Application_Forms
             _CheckTypeAndSetMode();
         }
 
-
-        //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //
-        //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //
-        //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //    //
-
-
+        
         // InternationalLicensesMode // 
 
         private BusinessTier.License _LocalLicense;
@@ -358,7 +445,7 @@ namespace MjdDVLD.Application_Forms
         private void _LoadInternationalInfo(InternationalLicense ILicense)
         {
             lblInternationalLicenseID.Text = ILicense.InternationalLicenseID.ToString();
-            cbLicenseClassInterntional.SelectedIndex = (int)ILicense.LicenseClass-1;
+            cbLicenseClassInterntional.SelectedIndex = ((int)ILicense.GetLicenseClass())-1;
             txtbIssuedDate.Text = ILicense.IssueDate.ToShortDateString();
             txtbExpirationDate.Text = ILicense.ExpirationDate.ToShortDateString();
             cbIsActive.Checked = ILicense.IsActive;
@@ -377,14 +464,14 @@ namespace MjdDVLD.Application_Forms
                 
                 if(btnPersonID.Text == "??")
                 {
-                    MessageBox.Show("You have to select a Person.", "Error.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    SecoundErrorProvider.SetError(btnPersonID, "You have to select a Person.");
+                    //MessageBox.Show("You have to select a Person.", "Error.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     gbInterNationalLicense.Enabled = false;
                     btnSave.Enabled = false;
 
                     return;
                 }
 
-                object ID = DVLDApp.MangeDrivers.GetDriverID(Convert.ToInt32(btnPersonID.Text));
 
                 if (!_CheckDriverExistent())
                     return;
@@ -432,7 +519,7 @@ namespace MjdDVLD.Application_Forms
         {
             if (lblApplicationID.Text == "??")
             {
-                if (DVLDApp.AddIssuingInternationalLicenseApplication(_ToApplication(), _ToInternationalLicense(), (LicenseClass)cbLicenseClassInterntional.SelectedIndex))
+                if (DVLDApp.MangeApplications.Add.IssuingInternationalLicenseApplication(_ToApplication(), _ToInternationalLicense()))
                 {
                     MessageBox.Show("Added Sccessfully.", "Success.", MessageBoxButtons.OK,MessageBoxIcon.Information); 
                     this.Close();
@@ -456,52 +543,696 @@ namespace MjdDVLD.Application_Forms
         }
 
 
-        
 
-        // Local License  sup Application //
 
-        private void btnEyeTestID_Click(object sender, EventArgs e)
+        // Local License Issuance mode (the sup Application) //
+
+        EyeTest NewEyeTest = null;
+        TheoreticalTest NewTheoreticalTest = null;
+        DrivingTest NewDrivingTest = null;
+
+        private LocalDrivingLicenseApplication _ToLocalLicenseApplication()
         {
-            
-            if(MessageBox.Show("Does the applicant have any valid eye test.","Eye Test",MessageBoxButtons.YesNo,MessageBoxIcon.Information) == DialogResult.Yes)
+            if (lblLocalDrivingLicenseApplicationID.Text != "??")
             {
-                ListAllForm EyeTestsList = new ListAllForm
-                    ( DVLDApp.MangeEyeTests.ListAllEyeTests(),"Eye Tests List",
-                    new ListAllForm.Permissions(ListAllForm.Permissions.Permission.ShowCard,ListAllForm.Permissions.Permission.Refresh),true);
+                LocalDrivingLicenseApplication LocalApplication = DVLDApp.MangeLocalDrivingLicenseApplications.Find(Convert.ToInt32(lblLocalDrivingLicenseApplicationID.Text));
 
-                EyeTestsList.OnOkButtonClick += _ChangeEyeTestID;    
+                LocalApplication.ApplicationID = Convert.ToInt32(lblApplicationID.Text);
+                LocalApplication.LicenseClass = (LicenseClass)(cbLicenseClassLocal.SelectedIndex + 1);
+                LocalApplication.EyeTestID = string.IsNullOrEmpty(btnEyeTestID.Text) ? null :(int?) Convert.ToInt32(btnEyeTestID.Text);
+                LocalApplication.DrivingTestID = string.IsNullOrEmpty(btnDrivingTestID.Text) ? null : (int?) Convert.ToInt32(btnDrivingTestID.Text);
+                LocalApplication.TheoritecalTestID = string.IsNullOrEmpty(btnTheoreticalTestID.Text) ? null : (int?) Convert.ToInt32(btnTheoreticalTestID.Text);
+
+                return LocalApplication;
             }
             else
-            {
-                //EyeTest
-            }
-
-             
+                return new LocalDrivingLicenseApplication(-1, (LicenseClass)(cbLicenseClassLocal.SelectedIndex + 1), null, null, null);
         }
 
+        private void _SetLicenseIssuanceMode()
+        {
+            gbLocalDrivingLicense.Visible = true;
+
+            if (lblApplicationID.Text == "??")
+            { // Add New //
+
+                cbLicenseClassLocal.SelectedIndex = 0;
+                cbLicenseClassLocal.Tag = "0";
+            }
+            else
+            { // Edit //
+                LocalDrivingLicenseApplication LocalApplication = DVLDApp.MangeLocalDrivingLicenseApplications.FindByApplicationID(Convert.ToInt32(lblApplicationID.Text));
+
+                lblLocalDrivingLicenseApplicationID.Text = LocalApplication.LocalDrivingLicenseApplicationID.ToString();
+                
+                cbLicenseClassLocal.SelectedIndex = (int)LocalApplication.LicenseClass - 1;
+                cbLicenseClassLocal.Enabled = false;
+
+                btnEyeTestID.Text = string.IsNullOrEmpty(LocalApplication.EyeTestID.ToString()) ? "Nan" : LocalApplication.EyeTestID.ToString();
+                btnDrivingTestID.Text = string.IsNullOrEmpty(LocalApplication.DrivingTestID.ToString()) ? "Nan" : LocalApplication.DrivingTestID.ToString();
+                btnTheoreticalTestID.Text = string.IsNullOrEmpty(LocalApplication.TheoritecalTestID.ToString()) ? "Nan" : LocalApplication.TheoritecalTestID.ToString();
+                    // Old Origenal values will be stored in the Tags //
+                btnEyeTestID.Tag = string.IsNullOrEmpty(LocalApplication.EyeTestID.ToString()) ? "Nan" : LocalApplication.EyeTestID.ToString();
+                btnDrivingTestID.Tag = string.IsNullOrEmpty(LocalApplication.DrivingTestID.ToString()) ? "Nan" : LocalApplication.DrivingTestID.ToString();
+                btnTheoreticalTestID.Tag = string.IsNullOrEmpty(LocalApplication.TheoritecalTestID.ToString()) ? "Nan" : LocalApplication.TheoritecalTestID.ToString();
+
+                if (!_ShowOnly)
+                    cmsLocalLicenseTestsChoice.Items[1].Visible = true;
+            }
+        }
+        
+                // Eye Test //
+        private void btnEyeTestID_Click(object sender, EventArgs e)
+        {
+            if (lblApplicationID.Text != "??")
+            { // Edit //
+
+                if (btnEyeTestID.Text == "Nan")
+                    return;
+
+                Test_Forms.AddEditTest EditTest = new Test_Forms.AddEditTest(TestType.EyeTest, null, Convert.ToInt32(btnEyeTestID.Text), true);
+
+                if (EditTest != null)
+                    EditTest.ShowDialog();
+            }
+            else
+            { // Add New //
+                if (btnPersonID.Text != "??")
+                {
+
+                    if (MessageBox.Show("Does the applicant have any valid eye test.", "Eye Test", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                    {
+                        DataTable ValidEyeTests = DVLDApp.MangeEyeTests.ListAllPersonEyeTests(Convert.ToInt32(btnPersonID.Text));
+
+                        DateTime AcceptedDate = DateTime.Now.Subtract(new TimeSpan(SettingsClass.EyeTestExpirationPeriod, 0, 0, 0));
+
+                        foreach (DataRow Row in ValidEyeTests.Select("AppointmentDate < #" + AcceptedDate.ToShortDateString() + "#"))
+                        {
+                            ValidEyeTests.Rows.Remove(Row);
+                        }
+
+                        ValidEyeTests.AcceptChanges();
+
+                        if (ValidEyeTests.Rows.Count == 0)
+                        {
+                            MessageBox.Show("The person does not have any valid Eye Test.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            return;
+                        }
+
+                        ListAllForm EyeTestsList = new ListAllForm
+                            (ValidEyeTests, "Eye Tests List",
+                                new ListAllForm.Permissions(ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), true);
+
+                        EyeTestsList.ShowDialog();
+
+                        EyeTestsList.OnOkButtonClick += _ChangeEyeTestID;
+                    }
+                    else
+                    {
+                        Test_Forms.AddEditTest AddNewTest = new Test_Forms.AddEditTest(TestType.EyeTest);
+
+                        AddNewTest.PersonID = Convert.ToInt32(btnPersonID.Text);
+
+                        AddNewTest.ReturnTestToSave += _SetTheNewEyeTest;
+                        if (AddNewTest != null)
+                            AddNewTest.ShowDialog();
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("You have To Select a Person first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private void _SetTheNewEyeTest(object Sender,Test Test)
+        {
+            NewEyeTest = (EyeTest)Test;
+            btnEyeTestID.Text = "OK";
+        }
         private void _ChangeEyeTestID(Object Sender, int ID)
         {
             btnEyeTestID.Text = ID.ToString();
         }
+        private void _ChooseAnotherEyeTest()
+        {
+            if (lblApplicationID.Text == "??")
+                return;
+
+            DataTable ValidEyeTests = DVLDApp.MangeEyeTests.ListAllPersonEyeTests(Convert.ToInt32(btnPersonID.Text));
+
+            DateTime AcceptedDate = DateTime.Now.Subtract(new TimeSpan(SettingsClass.EyeTestExpirationPeriod, 0, 0, 0));
+
+            foreach (DataRow Row in ValidEyeTests.Select("AppointmentDate < #" + AcceptedDate.ToShortDateString() + "#"))
+            {
+                ValidEyeTests.Rows.Remove(Row);
+            }
+
+            ValidEyeTests.AcceptChanges();
+
+            if (ValidEyeTests.Rows.Count == 0)
+            {
+                MessageBox.Show("The person does not have any valid Eye Test.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            ListAllForm EyeTestsList = new ListAllForm
+                (ValidEyeTests, "Eye Tests",
+                    new ListAllForm.Permissions(ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), true);
+
+            EyeTestsList.ShowDialog();
+
+            EyeTestsList.OnOkButtonClick += _ChangeEyeTestID;
+        }
+
+        // Driving Test //
+        private void btnDrivingTestID_Click(object sender, EventArgs e)
+        {
+            if (lblApplicationID.Text != "??")
+            { // Edit //
+
+                if (btnDrivingTestID.Text == "Nan")
+                    return;
+
+                Test_Forms.AddEditTest EditTest = new Test_Forms.AddEditTest(TestType.DrivingTest, null, Convert.ToInt32(btnDrivingTestID.Text), true);
+
+                if (EditTest != null)
+                    EditTest.ShowDialog();
+            }
+            else
+            { // Add New //
+                if (btnPersonID.Text != "??")
+                {
+                    Test_Forms.AddEditTest AddNewTest = new Test_Forms.AddEditTest(TestType.DrivingTest);
+
+                    AddNewTest.TestClass = (LicenseClass)(cbLicenseClassLocal.SelectedIndex + 1);
+                    AddNewTest.PersonID = Convert.ToInt32(btnPersonID.Text);
+
+                    AddNewTest.ReturnTestToSave += _SetTheNewDrivingTest;
+
+                    if (AddNewTest != null)
+                        AddNewTest.ShowDialog();
+
+                }
+                else
+                {
+                    MessageBox.Show("You have To Select a Person first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private void _SetTheNewDrivingTest(object Sender, Test Test)
+        {
+            NewDrivingTest = (DrivingTest)Test;
+            btnDrivingTestID.Text = "OK";
+        }
+        private void _ChangeDrivingTestID(Object Sender, int ID)
+        {
+            btnDrivingTestID.Text = ID.ToString();
+        }
+        private void _ChooseAnotherDrivingTesr()
+        {
+            if (lblApplicationID.Text == "??")
+                return;
+
+            DataTable ValidDrivingTests = DVLDApp.MangeDrivingTests.ListAllPersonDrivingTests(Convert.ToInt32(btnPersonID.Text));
+
+            DateTime AcceptedDate = DateTime.Now.Subtract(new TimeSpan(SettingsClass.DrivingTestExpirationPeriod, 0, 0, 0));
+
+            foreach (DataRow Row in ValidDrivingTests.Select("AppointmentDate < #" + AcceptedDate.ToShortDateString() + "#"))
+            {
+                ValidDrivingTests.Rows.Remove(Row);
+            }
+
+            ValidDrivingTests.AcceptChanges();
+
+            if (ValidDrivingTests.Rows.Count == 0)
+            {
+                MessageBox.Show("The person does not have any valid Driving Test.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            ListAllForm EyeTestsList = new ListAllForm
+                (ValidDrivingTests, "Driving Tests",
+                    new ListAllForm.Permissions(ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), true);
+
+            EyeTestsList.ShowDialog();
+
+            EyeTestsList.OnOkButtonClick += _ChangeDrivingTestID;
+        }
+
+        // Theoretical Test //
+        private void btnTheoreticalTestID_Click(object sender, EventArgs e)
+        {
+            if (lblApplicationID.Text != "??")
+            { // Edit //
+
+                if (btnTheoreticalTestID.Text == "Nan")
+                    return;
+
+                Test_Forms.AddEditTest EditTest = new Test_Forms.AddEditTest(TestType.TheoreticalTest,null,Convert.ToInt32(btnTheoreticalTestID.Text),true);
+
+                if (EditTest != null)
+                    EditTest.ShowDialog();
+            }
+            else
+            { // Add New //
+                if (btnPersonID.Text != "??")
+                {
+                    Test_Forms.AddEditTest AddNewTest = new Test_Forms.AddEditTest(TestType.TheoreticalTest);
+
+                    AddNewTest.TestClass = (LicenseClass)(cbLicenseClassLocal.SelectedIndex + 1);
+                    AddNewTest.PersonID = Convert.ToInt32(btnPersonID.Text);
+
+                    AddNewTest.ReturnTestToSave += _SetTheNewTheoreticalTest;
+
+                    if (AddNewTest != null)
+                        AddNewTest.ShowDialog();
+
+                }
+                else
+                {
+                    MessageBox.Show("You have To Select a Person first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private void _SetTheNewTheoreticalTest(object Sender, Test Test)
+        {
+            NewTheoreticalTest = (TheoreticalTest)Test;
+            btnTheoreticalTestID.Text = "OK";
+        }
+        private void _ChangeTheoreticalTestID(Object Sender, int ID)
+        {
+            btnTheoreticalTestID.Text = ID.ToString();
+        }
+        private void _ChooseAnotherTheoreticalTest()
+        {
+            if (lblApplicationID.Text == "??")
+                return;
+
+            DataTable ValidTheoreticalTests = DVLDApp.MangeTheoreticalTests.ListAllPersonTheoreticalTests(Convert.ToInt32(btnPersonID.Text));
+
+            DateTime AcceptedDate = DateTime.Now.Subtract(new TimeSpan(SettingsClass.TheoreticalTestExpirationPeriod, 0, 0, 0));
+
+            foreach (DataRow Row in ValidTheoreticalTests.Select("AppointmentDate < #" + AcceptedDate.ToShortDateString() + "#"))
+            {
+                ValidTheoreticalTests.Rows.Remove(Row);
+            }
+
+            ValidTheoreticalTests.AcceptChanges();
+
+            if (ValidTheoreticalTests.Rows.Count == 0)
+            {
+                MessageBox.Show("The person does not have any valid Theoretical Tests.", "Nan.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            ListAllForm EyeTestsList = new ListAllForm
+                (ValidTheoreticalTests, "Theoretical Tests",
+                    new ListAllForm.Permissions(ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), true);
+
+            EyeTestsList.ShowDialog();
+
+            EyeTestsList.OnOkButtonClick += _ChangeTheoreticalTestID;
+        }
 
 
 
+        private void cbLicenseClassLocal_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (btnDrivingTestID.Text != "??" || btnEyeTestID.Text != "??" || btnTheoreticalTestID.Text != "??")
+            {
+                if(MessageBox.Show("Are you sure you want to change the License class, you will need to renter the information.", "Attention",MessageBoxButtons.YesNo,MessageBoxIcon.Question) == DialogResult.No)
+                {
+                    cbLicenseClassLocal.SelectedIndex = Convert.ToInt32(cbLicenseClassLocal.Tag);
+                    return;
+                }
+            }
+
+            cbLicenseClassLocal.Tag = cbLicenseClassLocal.SelectedIndex.ToString();
+
+            NewEyeTest = null;
+            NewTheoreticalTest = null;
+            NewDrivingTest = null;
+
+            btnEyeTestID.Text = "??";
+            btnTheoreticalTestID.Text = "??";
+            btnDrivingTestID.Text = "??";
+        }
+       
+        private void _SaveInLocalLicensesMode()
+        {
+            SecoundErrorProvider.Clear();
+            // Theoretical test //
+
+            bool Failed = false;
+
+            if (btnTheoreticalTestID.Text == "??")
+            {
+                SecoundErrorProvider.SetError(btnTheoreticalTestID, "You have to enter a valid Theoretical Test.");
+                Failed = true;
+            }
+
+            else if (btnTheoreticalTestID.Text == "OK")
+            {
+                if (NewTheoreticalTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0, 0))
+                {
+                    MessageBox.Show("the Theoretical test should be in the future.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Failed = true;
+                }
+
+                if (NewTheoreticalTest.TestClass != (LicenseClass)(cbLicenseClassLocal.SelectedIndex + 1))
+                {
+                    MessageBox.Show("Unvaild Theoretical Test.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    btnTheoreticalTestID.Text = "??";
+                    NewTheoreticalTest = null;
+                    Failed = true;
+                }
+            }
+
+            // Driving test //
+
+            if (btnDrivingTestID.Text == "??")
+            {
+                SecoundErrorProvider.SetError(btnDrivingTestID, "You have to enter a valid Driving Test.");
+                Failed = true;
+            }
+            else if (btnDrivingTestID.Text == "OK")
+            {
+                if (NewDrivingTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0, 0))
+                {
+                    MessageBox.Show("the Driving test should be in the future.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Failed = true;
+                }
+
+                if (NewDrivingTest.TestClass != (LicenseClass)(cbLicenseClassLocal.SelectedIndex + 1))
+                {
+                    MessageBox.Show("Unvaild Driving Test.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    btnDrivingTestID.Text = "??";
+                    NewDrivingTest = null;
+                    Failed = true;
+                }
+            }
+
+
+            // Eye test //
+
+            if (btnEyeTestID.Text == "??")
+            {
+                SecoundErrorProvider.SetError(btnEyeTestID, "You have to enter a valid Eye Test.");
+                Failed = true;
+            }
+            else if (btnEyeTestID.Text == "OK")
+            {
+                if (NewEyeTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0, 0))
+                {
+                    MessageBox.Show("the Eye test should be in the future.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Failed = true;
+                }
+            }
+            else
+            {
+                if (!DVLDApp.MangeEyeTests.IsExist(Convert.ToInt32(btnEyeTestID.Text)))
+                {
+                    MessageBox.Show("Could not find the Eye test", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Failed = true;
+                }
+
+                EyeTest FindedEyeTest = DVLDApp.MangeEyeTests.Find(Convert.ToInt32(btnEyeTestID.Text));
+
+                if (FindedEyeTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0, 0) && FindedEyeTest.TestResult != true)
+                {
+                    MessageBox.Show("the selected Eye test resulte should be Passed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Failed = true;
+                }
+
+            }
+
+            if (Failed)
+                return;
 
 
 
+            if (DVLDApp.MangeApplications.Add.IssuingLocalLicenseApplication(_ToApplication(), _ToLocalLicenseApplication(), NewEyeTest, NewDrivingTest, NewTheoreticalTest) != -1) 
+            {
+                MessageBox.Show("Application Added successfully.", "Operation succeeded.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.Close();
+            }
+            else
+                MessageBox.Show("Application Adding failed.", "Operation failed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                     
+        }
 
-        /*
-            public int ApplicantPersonID;
-            public int ApplicationID;
-            public DateTime ApplicationDate;
-            public DateTime LastStatusDate;
-            public int CreatedByUserID;
-            public ApplicationType ApplicationTypeID;
-            public byte ApplicationStatus;
+        private void _EditOnIssuingLocalLicenseMode()
+        {
+
+            if (btnEyeTestID.Text == btnEyeTestID.Tag.ToString() && btnDrivingTestID.Text == btnDrivingTestID.Tag.ToString() && btnTheoreticalTestID.Text == btnTheoreticalTestID.Tag.ToString() && txtbPaidFees.Text == txtbPaidFees.Tag.ToString() && cbApplicationStatus.SelectedIndex.ToString() == cbApplicationStatus.Tag.ToString()) 
+            {
+                MessageBox.Show("You did not change any thing.", "Information.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            else
+            {
+                if(cbApplicationStatus.SelectedIndex == 2)
+                {
+                    if (DVLDApp.MangeEyeTests.IsExist(Convert.ToInt32(btnEyeTestID.Text)))
+                    {
+                        if (!DVLDApp.MangeEyeTests.IsPassed(Convert.ToInt32(btnEyeTestID.Text)))
+                        {
+                            MessageBox.Show("Eye Test has to be passed to complete the Application.", "Abort.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Selected Eye Test Does Not Exist.", "Abort.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    if (DVLDApp.MangeDrivingTests.IsExist(Convert.ToInt32(btnDrivingTestID.Text)))
+                    {
+                        if (!DVLDApp.MangeDrivingTests.IsPassed(Convert.ToInt32(btnDrivingTestID.Text)))
+                        {
+                            MessageBox.Show("Driving Test has to be passed to complete the Application.", "Abort.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Selected Driving Test Does Not Exist.", "Abort.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    if (DVLDApp.MangeTheoreticalTests.IsExist(Convert.ToInt32(btnTheoreticalTestID.Text)))
+                    {
+                        if (!DVLDApp.MangeTheoreticalTests.IsPassed(Convert.ToInt32(btnTheoreticalTestID.Text)))
+                        {
+                            MessageBox.Show("Theoretical Test has to be passed to complete the Application.", "Abort.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Selected Theoretical Test Does Not Exist.", "Abort.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
 
 
-            public decimal PaidFees;
-        */
+                    if (DVLDApp.EditLocalLicenseApplication(_ToApplication(), _ToLocalLicenseApplication()))
+                    {
+                        MessageBox.Show("Application Edited successfully.", "Operation succeeded.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        this.Close();
+                    }
+                    else
+                        MessageBox.Show("Application Adding failed.", "Operation failed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+
+                }
+            }
+        }
+
+        private void choiseElseOneToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem Item = (ToolStripMenuItem)sender;
+            ContextMenuStrip MenuStrip = (ContextMenuStrip)Item.Owner;
+            
+           switch (MenuStrip.SourceControl.Name)
+            {
+                case "btnEyeTestID":
+                    _ChooseAnotherEyeTest();
+                    break;
+
+                case "btnDrivingTestID":
+                    _ChooseAnotherDrivingTesr();
+                    break;
+
+                case "btnTheoreticalTestID":
+                    _ChooseAnotherTheoreticalTest();
+                    break;
+            }
+
+        }
+
+        // Retake Test mode //
+
+        Test RetakeTestTest;
+
+        private void _SetRetakeTestMode()
+        {
+            cbApplicationStatus.SelectedIndex = 2;
+            cbApplicationStatus.Enabled = false;
+            gbRetakeTest.Visible = true;
+
+            if (lblApplicationID.Text == "??")
+            {
+                cbRetakeTestTestType.SelectedIndex = 0;
+            }
+            else
+            {
+                cbRetakeTestTestType.Enabled = false;
+
+                _LoadRetakeTestInfo();
+            }
+        }
+        private void _LoadRetakeTestInfo()
+        {
+            Test FindedTest = null;
+
+            FindedTest =  DVLDApp.MangeEyeTests.FindByApplicationID(Convert.ToInt32(lblApplicationID.Text));
+
+            if (FindedTest != null)
+            {
+                cbRetakeTestTestType.SelectedIndex = 2;
+                RetakeTestTest = FindedTest;
+            }
+            else
+            {
+                FindedTest = DVLDApp.MangeDrivingTests.FindByApplicationID(Convert.ToInt32(lblApplicationID.Text));
+                
+                if (FindedTest != null)
+                {
+                    cbRetakeTestTestType.SelectedIndex = 1;
+                    RetakeTestTest = FindedTest;
+                }
+                else
+                {
+                    FindedTest = DVLDApp.MangeTheoreticalTests.FindByApplicationID(Convert.ToInt32(lblApplicationID.Text));
+
+                    if (FindedTest != null)
+                    {
+                        cbRetakeTestTestType.SelectedIndex = 0;
+                        RetakeTestTest = FindedTest;
+
+                    }
+                    else
+                    {
+                        MessageBox.Show("Error entered Incorect Data.", "Error.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        gbRetakeTest.Enabled = false;
+                    }
+                }
+            }
+
+            btnRetakeTestTestID.Text = FindedTest.TestID.ToString();
+            
+
+        }
+        private void btnRetakeTest_Click(object sender, EventArgs e)
+        {
+            if (lblApplicationID.Text == "??")
+            {
+                switch (cbRetakeTestTestType.SelectedIndex)
+                {
+                    case 2:
+                        // Add New Eye Test //
+                        if (btnPersonID.Text != "??")
+                        {
+
+                            Test_Forms.AddEditTest AddNewTest = new Test_Forms.AddEditTest(TestType.EyeTest);
+
+                            AddNewTest.PersonID = Convert.ToInt32(btnPersonID.Text);
+
+                            AddNewTest.ReturnTestToSave += _SetRetackTestTest;
+                            if (AddNewTest != null)
+                                AddNewTest.ShowDialog();
+
+                        }
+                        else
+                        {
+                            MessageBox.Show("You have To Select a Person first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        break;
+                    case 1:
+                        if (btnPersonID.Text != "??")
+                        {
+                            Test_Forms.AddEditTest AddNewTest = new Test_Forms.AddEditTest(TestType.DrivingTest);
+
+                            AddNewTest.PersonID = Convert.ToInt32(btnPersonID.Text);
+
+                            AddNewTest.ReturnTestToSave += _SetRetackTestTest;
+
+                            if (AddNewTest != null)
+                                AddNewTest.ShowDialog();
+
+                        }
+                        else
+                        {
+                            MessageBox.Show("You have To Select a Person first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        break;
+                    default: // 0
+                        if (btnPersonID.Text != "??")
+                        {
+                            Test_Forms.AddEditTest AddNewTest = new Test_Forms.AddEditTest(TestType.TheoreticalTest);
+
+                            AddNewTest.PersonID = Convert.ToInt32(btnPersonID.Text);
+
+                            AddNewTest.ReturnTestToSave += _SetRetackTestTest;
+
+                            if (AddNewTest != null)
+                                AddNewTest.ShowDialog();
+
+                        }
+                        else
+                        {
+                            MessageBox.Show("You have To Select a Person first.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        break;
+
+                }
+            }
+            else
+            { 
+                Test_Forms.AddEditTest EditTest = new Test_Forms.AddEditTest((TestType)cbRetakeTestTestType.SelectedIndex, null, Convert.ToInt32(btnRetakeTestTestID.Text), true);
+
+                if (EditTest != null)
+                    EditTest.ShowDialog();
+            }
+        }
+
+        private void _SetRetackTestTest(object sender, Test Test)
+        {
+            RetakeTestTest = Test;
+            btnRetakeTestTestID.Text = "OK";
+        }
+
+        private void _SaveInRetakeTestMode()
+        {
+            SecoundErrorProvider.Clear();
+
+            if(btnRetakeTestTestID.Text == "??")
+            {
+                SecoundErrorProvider.SetError(btnRetakeTestTestID,"You have to set the tests values");
+                return;
+            }    
+            
+            if(DVLDApp.AddRetakeTestApplication(_ToApplication(), (TestType)(cbRetakeTestTestType.SelectedIndex), RetakeTestTest))
+            {
+                MessageBox.Show("Application Added Successfully","Success.",MessageBoxButtons.OK,MessageBoxIcon.Information);
+                this.Close();
+            }
+            else
+            { 
+                MessageBox.Show("Application Adding failed", "failed.", MessageBoxButtons.OK,MessageBoxIcon.Error);
+            }
+        }
+    
     }
 }

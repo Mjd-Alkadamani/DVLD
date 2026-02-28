@@ -76,6 +76,7 @@ namespace MjdDVLD
             // 
             // btnLogin
             // 
+            this.btnLogin.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.btnLogin.Location = new System.Drawing.Point(176, 181);
             this.btnLogin.Name = "btnLogin";
             this.btnLogin.Size = new System.Drawing.Size(75, 23);
@@ -86,6 +87,7 @@ namespace MjdDVLD
             // 
             // btnExit
             // 
+            this.btnExit.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.btnExit.Location = new System.Drawing.Point(277, 181);
             this.btnExit.Name = "btnExit";
             this.btnExit.Size = new System.Drawing.Size(75, 23);
@@ -121,7 +123,7 @@ namespace MjdDVLD
             // 
             // Timer
             // 
-            this.Timer.Interval = 10000;
+            this.Timer.Interval = 5000;
             this.Timer.Tick += new System.EventHandler(this.Timer_Tick);
             // 
             // epLoginFailed2
@@ -135,6 +137,7 @@ namespace MjdDVLD
             this.AcceptButton = this.btnLogin;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.CancelButton = this.btnExit;
             this.ClientSize = new System.Drawing.Size(518, 222);
             this.Controls.Add(this.mtbPassword);
             this.Controls.Add(this.mtbUserNameOrID);

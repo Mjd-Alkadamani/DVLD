@@ -5,7 +5,7 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Generale;
+using General;
 
 namespace DataAccessTier
 {
@@ -75,7 +75,7 @@ namespace DataAccessTier
     {
         public static DTPerson Find(string NationalNo)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT [PersonID]" +
                   ",[FirstName]" +
@@ -125,7 +125,7 @@ namespace DataAccessTier
 
         public static DTPerson Find(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT" +
                   " [NationalNo]" +
@@ -189,7 +189,7 @@ namespace DataAccessTier
 
         public static bool IsExist(string NationalNo)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "select top 1 isExist = 1 from People where  NationalNo =  @NationalNo";
 
@@ -221,7 +221,7 @@ namespace DataAccessTier
 
         public static bool IsExist(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = @"select top 1 isExist = 1 from People where  PersonID =  @PersonID";
 
@@ -254,7 +254,7 @@ namespace DataAccessTier
 
         public static DateTime? GetPersonBirthDate(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT top 1"
                       + " [DateOfBirth]"
@@ -292,7 +292,7 @@ namespace DataAccessTier
 
         public static string GetPersonImagePath(int PersonID)
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT top 1"
                       + " [ImagePath]"
@@ -330,7 +330,7 @@ namespace DataAccessTier
 
         public static DataTable ListAllPeople()
         {
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT [PersonID]" +
                   ",[NationalNo]" +
@@ -384,7 +384,7 @@ namespace DataAccessTier
             ) 
             { return null; }
 
-        SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+        SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO[dbo].[People]" +
@@ -435,10 +435,10 @@ namespace DataAccessTier
             {
                 Connection.Open();
 
-                object DoesSucceded = Command.ExecuteNonQuery();
+                object DoesSucceded = Command.ExecuteScalar();
 
                 if (DoesSucceded != null)
-                    AddedID = (int) DoesSucceded;
+                    AddedID = Convert.ToInt32(DoesSucceded);
 
             }
             catch(Exception ex)
@@ -450,7 +450,7 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            PersonToAdd._PersonID = AddedID ?? -1;
+            PersonToAdd._PersonID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
@@ -489,7 +489,7 @@ namespace DataAccessTier
         public static bool UpdatePerson(DTPerson PersonToUpdate)
         {
          
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -562,7 +562,7 @@ namespace DataAccessTier
         public static bool DeletePerson(int IDToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
@@ -600,7 +600,7 @@ namespace DataAccessTier
         public static bool DeletePerson(string NationalNoToDelete)
         {
 
-            SqlConnection Connection = new SqlConnection(SettingsClass.DataAccessString);
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
               "delete from [dbo].[People]" +

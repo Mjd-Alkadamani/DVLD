@@ -9,3 +9,14 @@ D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\B
 D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\BusinessTier.pdb
 D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\Generale.dll
 D:\Desktop\for mjd\Programing\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\Generale.pdb
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\BusinessTier.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\BusinessTier.pdb
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\DataAccessTier.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\Generale.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\DataAccessTier.pdb
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\bin\Debug\Generale.pdb
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\BusinessTier.csproj.AssemblyReference.cache
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\BusinessTier.csproj.CoreCompileInputs.cache
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\BusinessTier.csproj.CopyComplete
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\BusinessTier.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\BusinessTier\obj\Debug\BusinessTier.pdb
