@@ -178,6 +178,43 @@ namespace DataAccessTier
 
         }
 
+        public static int? DoesDriverHaveActiveLicense(int DriverID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = @"select top 1 InternationalLicenseID from InternationalLicenses"
+                    +" where DriverID = @DriverID and isActive =  @isActive";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@DriverID ", DriverID);
+            Command.Parameters.AddWithValue("@isActive", DriverID);
+
+            int? InternationalLicenseID = null;
+
+            try
+            {
+                Connection.Open();
+
+                object LicenseID = Command.ExecuteScalar();
+
+                if (LicenseID != null)
+                    InternationalLicenseID = (int)LicenseID;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return InternationalLicenseID;
+
+        }
+
         public static bool IsExist(int InternationalLicenseID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
@@ -331,6 +368,95 @@ namespace DataAccessTier
                 IssuedUsingLocalLicenseID, IssueDate, ExpirationDate, IsActive, CreatedByUserID));
         }
 
+        public static bool UpdateExpirationDate(int InternationalLicenseID,DateTime ExpirationDate)
+        {
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[InternationalLicenses]" +
+              "SET" +
+              " [ExpirationDate] = @ExpirationDate" +
+                   " WHERE InternationalLicenseID = @InternationalLicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@ExpirationDate", ExpirationDate);
+
+            Command.Parameters.AddWithValue("@InternationalLicenseID", InternationalLicenseID);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateAcvtiveStatus(int InternationalLicenseID, bool ActivationSatut)
+
+        {
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE [dbo].[InternationalLicenses]" +
+              "SET " +
+              "[IsActive] = @IsActive" +
+                   " WHERE InternationalLicenseID = @InternationalLicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@IsActive", ActivationSatut);
+            Command.Parameters.AddWithValue("@InternationalLicenseID", InternationalLicenseID);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool DeactivateLicense(int InternationalLicenseID)
+        {
+            return UpdateAcvtiveStatus(InternationalLicenseID, false);
+        }
+        
         public static bool UpdateInternationalLicense(DTInternationalLicense InternationalLicenseToUpdate)
         {
 
@@ -421,15 +547,15 @@ namespace DataAccessTier
 
         public static DateTime GetInternationalLicenseExpiretionDate(DTLicense LocalLicense)
         {
-            if(DataAccessSettings.AllowInternationalLicenseExpirationDateToByPassLocalOne)
+            if(SettingsClass.InternationalLicense.AllowInternationalLicenseExpirationDateToByPassLocalOne)
             {
-                return DateTime.Now + new TimeSpan(DataAccessSettings.HowManyYearsForInternationalLicense() * 364, 0, 0,0);
+                return DateTime.Now + SettingsClass.InternationalLicense.InternationalLicenseYears;
             }
 
 
             DateTime LocalLicenseExpirationDate = AccessLicenseData.GetExpirationDateOfLicense(LocalLicense);
 
-            DateTime InternationalLicenseExpirationDate = DateTime.Now + new TimeSpan(DataAccessSettings.HowManyYearsForInternationalLicense() * 364, 0, 0,0);
+            DateTime InternationalLicenseExpirationDate = DateTime.Now + SettingsClass.InternationalLicense.InternationalLicenseYears;
 
             if (LocalLicenseExpirationDate > InternationalLicenseExpirationDate)
             {
@@ -524,83 +650,7 @@ namespace DataAccessTier
             return FindedInternationalLicenseClass;
 
         }
-
-        // Use it only if very necessary 
-        public static LicenseClass? GetInternationalLicenseClassByApplicationID(int ApplicationID)
-        {
-            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
-
-            string Query = @"select Licenses.LicenseClass "
-                           +"from(InternationalLicenses inner join Applications on InternationalLicenses.ApplicationID = Applications.ApplicationID) "
-                           +"inner join Licenses on InternationalLicenses.IssuedUsingLocalLicenseID = Licenses.LicenseID "
-                           + "Where Applications.ApplicationID = @ApplicationID";
-
-            SqlCommand Command = new SqlCommand(Query, Connection);
-            Command.Parameters.AddWithValue("@ApplicationID", ApplicationID);
-            LicenseClass? FindedInternationalLicenseClass = null;
-
-            try
-            {
-                Connection.Open();
-                object Class = Command.ExecuteScalar();
-
-                FindedInternationalLicenseClass = (LicenseClass)Class;
-            }
-            catch (Exception ex)
-            {
-
-            }
-            finally
-            {
-                Connection.Close();
-            }
-
-            return FindedInternationalLicenseClass;
-
-        }
-
-        public static bool SetActivationSatuts(int InternationalLicenseID, bool ActivationSatut)
-
-        {
-
-            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
-
-            string Query =
-
-              "UPDATE [dbo].[InternationalLicenses]" +
-              "SET " +
-              "[IsActive] = @IsActive" +
-                   " WHERE InternationalLicenseID = @InternationalLicenseID";
-
-            SqlCommand Command = new SqlCommand(Query, Connection);
-
-            Command.Parameters.AddWithValue("@IsActive", ActivationSatut);
-            Command.Parameters.AddWithValue("@InternationalLicenseID", InternationalLicenseID);
-
-            bool DoesUpdateSucceded = false;
-
-            try
-            {
-                Connection.Open();
-
-                object DoesSucceded = Command.ExecuteNonQuery();
-
-                if (DoesSucceded != null)
-                    DoesUpdateSucceded = true;
-
-            }
-            catch (Exception ex)
-            {
-
-            }
-            finally
-            {
-                Connection.Close();
-            }
-
-            return DoesUpdateSucceded;
-        }
-
+ 
     }
 
 }

@@ -15,7 +15,7 @@ namespace DataAccessTier
     public class DTTheoreticalTest
     {
         internal protected DTTheoreticalTest(int TestID, int PersonID, DateTime AppointmentDate, decimal PaidFees,
-            int AppointmentMadeByUserID, int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID ,LicenseClass TestClass)
+            int AppointmentMadeByUserID, int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID, LicenseClass TestClass)
         {
             this._TestID = TestID;
             this.PersonID = PersonID;
@@ -23,18 +23,18 @@ namespace DataAccessTier
             this.PaidFees = PaidFees;
             this.AppointmentMadeByUserID = AppointmentMadeByUserID;
             this.TestApplicationID = TestApplicationID;
-            this._TestResult = TestResult;
-            this._Notes = Notes;
-            this._ResultAddedByUserID = ResultAddedByUserID;
+            this.TestResult = TestResult;
+            this.Notes = Notes;
+            this.ResultAddedByUserID = ResultAddedByUserID;
             this.TestClass = TestClass;
         }
 
         // Any of them Cuold be Null
         public void SetReleaseInfo(bool TestResult, string Notes, int ResultAddedByUserID)
         {
-            this._TestResult = TestResult;
-            this._Notes = Notes;
-            this._ResultAddedByUserID = ResultAddedByUserID;
+            this.TestResult = TestResult;
+            this.Notes = Notes;
+            this.ResultAddedByUserID = ResultAddedByUserID;
         }
 
 
@@ -46,15 +46,12 @@ namespace DataAccessTier
         public int AppointmentMadeByUserID;
         public int TestApplicationID;
 
-        private bool? _TestResult = null;
-        private string _Notes = null;
-        private int? _ResultAddedByUserID = null;
+        public bool? TestResult = null;
+        public string Notes = null;
+        public int? ResultAddedByUserID = null;
 
         public LicenseClass TestClass;
 
-        public bool? TestResult { get { return _TestResult; } }
-        public string Notes { get { return _Notes; } }
-        public int? ResultAddedByUserID { get { return _ResultAddedByUserID; } }
     }
 
     public class AccessTheoreticalTestData
@@ -567,28 +564,66 @@ namespace DataAccessTier
         }
 
         public static bool UpdateTest(int TestID, int PersonID, DateTime AppointmentDate, decimal PaidFees,
-            int AppointmentMadeByUserID, int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID, LicenseClass TestClass)
+            int AppointmentMadeByUserID, int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID,
+            LicenseClass TestClass, int CurrentUserID)
         {
             if (!IsExist(TestID))
                 return false;
 
             return UpdateTest(new DTTheoreticalTest(TestID, PersonID, AppointmentDate, PaidFees,
-                AppointmentMadeByUserID, TestApplicationID, TestResult, Notes, ResultAddedByUserID, TestClass));
+                AppointmentMadeByUserID, TestApplicationID, TestResult, Notes, ResultAddedByUserID, TestClass), CurrentUserID);
         }
 
-        public static bool UpdateTest(DTTheoreticalTest TestToUpdate)
+        public static bool UpdateTest(DTTheoreticalTest TestToUpdate , int UserID)
         {
+            if (TestToUpdate == null)
+                return false;
+
+            if (TestToUpdate.TestID < 0)
+                return false;
+
+            if (!AccessUserData.IsExist(UserID))
+                return false;
+
+            DTTheoreticalTest OldTest = Find(TestToUpdate.TestID);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.PersonID != TestToUpdate.PersonID ||
+                 OldTest.TestClass != TestToUpdate.TestClass ||
+                  OldTest.TestApplicationID != TestToUpdate.TestApplicationID)
+                return false;
+
+            if (OldTest.AppointmentDate != TestToUpdate.AppointmentDate)
+            {
+                if (OldTest.TestResult != null)
+                    return false;
+
+                if (TestToUpdate.AppointmentDate < DateTime.Now)
+                    return false;
+
+                TestToUpdate.AppointmentMadeByUserID = UserID;
+
+            }
+            else
+                TestToUpdate.AppointmentMadeByUserID = OldTest.AppointmentMadeByUserID;
+
+            if (OldTest.TestResult != TestToUpdate.TestResult)
+                TestToUpdate.ResultAddedByUserID = UserID;
+            else
+                TestToUpdate.ResultAddedByUserID = OldTest.ResultAddedByUserID;
+
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
-
               "UPDATE[dbo].[TheoreticalTests]" +
               "SET " +
               " [PersonID]               = @PersonID" +
               ",[AppointmentDate]        = @AppointmentDate" +
               ",[PaidFees]               = @PaidFees" +
-              ",[AppointmentMadeByUserID]= @AppointmentMadeByUserID" +
+              ",[AppointmentMadeByUserID] = @AppointmentMadeByUserID" +
               ",[TestApplicationID]      = @TestApplicationID" +
               ",[TestResult]             = @TestResult" +
               ",[Notes]                  = @Notes" +
@@ -624,6 +659,189 @@ namespace DataAccessTier
                 Command.Parameters.AddWithValue("@TestClass", TestToUpdate.TestClass);
 
             Command.Parameters.AddWithValue("@TestID", TestToUpdate.TestID);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdatePaiedFee(int TestIDToUpdate, decimal NewPaidFees)
+        {
+
+            if (TestIDToUpdate < 0)
+                return false;
+
+            if (NewPaidFees < 0)
+                return false;
+
+            DTTheoreticalTest OldTest = Find(TestIDToUpdate);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.TestResult != null)
+                return false;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Eye Tests]" +
+              "SET" +
+              " [PaidFees] = @PaidFees" +
+                   " WHERE TestID = @TestID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@PaidFees", NewPaidFees);
+
+            Command.Parameters.AddWithValue("@TestID", TestIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateAppointmentDate(int TestIDToUpdate, DateTime NewAppointmentDate, int UserID)
+        {
+            if (TestIDToUpdate < 0)
+                return false;
+
+            if (NewAppointmentDate < DateTime.Now)
+                return false;
+
+            if (!AccessUserData.IsExist(UserID))
+                return false;
+
+            DTTheoreticalTest OldTest = Find(TestIDToUpdate);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.AppointmentDate == NewAppointmentDate)
+                return false;
+
+            if (OldTest.TestResult != null)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Eye Tests]" +
+              " SET" +
+              " [AppointmentDate] = @AppointmentDate" +
+              ",[AppointmentMadeByUserID] = @AppointmentMadeByUserID" +
+                   " WHERE TestID = @TestID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@AppointmentDate", NewAppointmentDate);
+            Command.Parameters.AddWithValue("@AppointmentMadeByUserID", UserID);
+
+            Command.Parameters.AddWithValue("@TestID", TestIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateTestResult(int TestIDToUpdate, bool TestResult, int UserID)
+        {
+            if (TestIDToUpdate < 0)
+                return false;
+
+            if (!AccessUserData.IsExist(UserID))
+                return false;
+
+            DTTheoreticalTest OldTest = Find(TestIDToUpdate);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.AppointmentDate > DateTime.Now)
+                return false;
+
+            if (OldTest.TestResult != null)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Eye Tests]" +
+              " SET" +
+              " [TestResult] = @TestResult" +
+              ",[ResultAddedByUserID] = @ResultAddedByUserID" +
+                   " WHERE TestID = @TestID";
+
+
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@TestResult", TestResult);
+            Command.Parameters.AddWithValue("@ResultAddedByUserID", UserID);
+
+            Command.Parameters.AddWithValue("@TestID", TestIDToUpdate);
 
             bool DoesUpdateSucceded = false;
 

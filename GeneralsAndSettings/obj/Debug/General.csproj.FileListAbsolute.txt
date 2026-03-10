@@ -1,2 +1,13 @@
 D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\General.csproj.AssemblyReference.cache
 D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\General.csproj.CoreCompileInputs.cache
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\Generale.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\Generale.pdb
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\mscorlib.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\normidna.nlp
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\normnfc.nlp
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\normnfd.nlp
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\normnfkc.nlp
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\bin\Debug\normnfkd.nlp
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\General.csproj.CopyComplete
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\Generale.dll
+D:\Desktop\for mjd\Programming\Mohammed Abu-Hadhoud\C_20\GeneralsAndSettings\obj\Debug\Generale.pdb

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Drawing;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,80 +10,316 @@ namespace General
 {
     public class SettingsClass
     {
+        
+        // all pathes should end wit "\"
+        public static class Paths
+        {
+            public static class ProfilePhotos
+            {
+                public static string ProfileImagesPath { get { return _ProfileImagesPath; } }
+                private static string _ProfileImagesPath = @"C:\DVLDImges\ProfilePhotos\";
+
+                public readonly static string FemaleProfileErrorImagePath = @"C:\DVLDImges\ProfilePhotos\FemaleErrorImge.jpg";
+                public readonly static string MaleProfileErrorImagePath = @"C:\DVLDImges\ProfilePhotos\MaleErrorImge.jpg";
+            }
+
+            public static class DrivingCourseCertificatesCopes
+            {
+                public static string ImagesPath { get { return _ImagesPath; } }
+                private static string _ImagesPath = @"C:\DVLDImges\DrivingCourseCertificatesCopes\";
+            }
+
+            public static class IdentificationsCopes
+            {
+                public static string ImagesPath { get { return _ImagesPath; } }
+                private static string _ImagesPath = @"C:\DVLDImges\IdentificationsCopes\";
+            }
+
+        }
+
+        public static class PeopleSettings
+        {            
+            public static int MinimumAgeForPersonOnTheSystem; // Years
+
+            public static class Drivers
+            {
+
+            }
+            public static class Users
+            {
+
+            }
+        }
+
         public static class Application
         {
-            public readonly static decimal BaseApplicationFees = 5;
+            private readonly static decimal _BaseApplicationFees = 5;
 
+            private readonly static decimal _LicenseIssuanceAdditionalApplicationFee = 0;
             private readonly static decimal _DamageRepalcementAdditionalApplicationFee = 20;
             private readonly static decimal _IssuingInternationalLicenseAdditionalApplicationFee = 20;
             private readonly static decimal _MissingReplacementAdditionalApplicationFee = 20;
             private readonly static decimal _RenewDrivingLicenseAdditionalApplicationFee = 10;
+            private readonly static decimal _ReleaseLicenseAdditionalApplicationFee = 0;
             private readonly static decimal _RetakeTestAdditionalApplicationFee = 0;
 
-            public static decimal? GetLocalLicenseIssuingFees (ApplicationType Type)
+            public static decimal GetBaseApplicationFees (ApplicationType Type)
             {
+                decimal BaseCost = _BaseApplicationFees;
+
                 switch (Type)
                 {
+                    case ApplicationType.LicenseIssuance:
+                        BaseCost += _LicenseIssuanceAdditionalApplicationFee;
+                        break;
+
                     case ApplicationType.DamagedReplacement:
-                        return _DamageRepalcementAdditionalApplicationFee;
+                        BaseCost += _DamageRepalcementAdditionalApplicationFee;
+                        break;
+
                     case ApplicationType.IssuingInternationalLicense:
-                        return _IssuingInternationalLicenseAdditionalApplicationFee;
+                        BaseCost += _IssuingInternationalLicenseAdditionalApplicationFee;
+                        break;
+
                     case ApplicationType.MissingReplacement:
-                        return _MissingReplacementAdditionalApplicationFee;
+                        BaseCost += _MissingReplacementAdditionalApplicationFee;
+                        break;
+                    
                     case ApplicationType.RenewDrivingLicense:
-                        return _RenewDrivingLicenseAdditionalApplicationFee;
+                        BaseCost += _RenewDrivingLicenseAdditionalApplicationFee;
+                        break;
+                    
                     case ApplicationType.RetakeTest:
-                        return _RetakeTestAdditionalApplicationFee;
-                    default:
-                        return null;
+                        BaseCost += _RetakeTestAdditionalApplicationFee;
+                        break;
+
+                    case ApplicationType.ReleaseLicense:
+                        BaseCost += _ReleaseLicenseAdditionalApplicationFee;
+                        break;
                 }
+
+                return BaseCost;
             }
 
             public readonly static TimeSpan ApplicationExpirationPeriod = new TimeSpan(180, 0, 0, 0);
+
+            public static bool IsExpired(DateTime ApplicationDate)
+            {
+                return DateTime.Now.Subtract(ApplicationDate) > SettingsClass.Application.ApplicationExpirationPeriod;
+            }
         }
 
-        public static class Test
+        public static class TestInfos
         {
-            public readonly static decimal EyeTestFees = 30;
-            public readonly static decimal DrivingTestFees = 30;
-            public readonly static decimal TheoreticalTestFees = 30;
 
-            // // Expiry period // ( in Days )
+            public static class Eye
+            {
+                private readonly static decimal _CashedFees = 30;
+                private readonly static DateTime _FeeAppliesAfter = new DateTime(2026, 1, 1);
 
+                public static decimal? GetCashedFeeIfInDateRange(DateTime TestDate)
+                {
+                    if (TestDate < _FeeAppliesAfter)
+                        return null;
+                    else
+                        return _CashedFees;
+                }
+
+                public readonly static TimeSpan EyeTestExpirationPeriod = new TimeSpan(180, 0, 0, 0);
+            }
+
+            public static class Driving
+            {
+                public readonly static TimeSpan ExpirationPeriod = new TimeSpan(180, 0, 0, 0);
+
+                // Latest Test Fees will be cashed here With its Dates // 
+
+                private static decimal _MotorcyclesTestFee = 30;
+                private static DateTime _MotorcyclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _LargeMotorcyclesTestFee = 30;
+                private static DateTime _LargeMotorcyclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _RegularCarTestFee = 30;
+                private static DateTime _RegularCarFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _PublicVehiclesTestFee = 30;
+                private static DateTime _PublicVehiclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _AgriculturalVehiclesTestFee = 30;
+                private static DateTime _AgriculturalVehiclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _BusesTestFee = 30;
+                private static DateTime _BusesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _HeavyVhiclesTestFee = 30;
+                private static DateTime _HeavyVhiclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                public static decimal? GetCashedFeeIfInDateRange(DateTime TestDate, LicenseClass Class)
+                {
+                    switch (Class)
+                    {
+                        case LicenseClass.Motorcycles:
+                            if (TestDate < _MotorcyclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _MotorcyclesTestFee;
+
+                        case LicenseClass.LargeMotorcycles:
+                            if (TestDate < _LargeMotorcyclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _LargeMotorcyclesTestFee;
+
+                        case LicenseClass.RegularCar:
+                            if (TestDate < _RegularCarFeeAppliesAfter)
+                                return null;
+                            else
+                                return _RegularCarTestFee;
+
+                        case LicenseClass.PublicVehicles:
+                            if (TestDate < _PublicVehiclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _PublicVehiclesTestFee;
+
+                        case LicenseClass.AgriculturalVehicles:
+                            if (TestDate < _AgriculturalVehiclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _AgriculturalVehiclesTestFee;
+
+                        case LicenseClass.Buses:
+                            if (TestDate < _BusesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _BusesTestFee;
+
+                        default: // LicenseClass.HeavyVhicles
+                            if (TestDate < _HeavyVhiclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _HeavyVhiclesTestFee;
+
+
+                    }
+                }
+
+            }
+
+            public static class Theoretical
+            {
+                public readonly static TimeSpan TheoreticalTestExpirationPeriod = new TimeSpan(180, 0, 0, 0);
+
+                // Latest Test Fees will be cashed here With its Dates // 
+
+                private static decimal _MotorcyclesTestFee = 30;
+                private static DateTime _MotorcyclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _LargeMotorcyclesTestFee = 30;
+                private static DateTime _LargeMotorcyclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _RegularCarTestFee = 30;
+                private static DateTime _RegularCarFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _PublicVehiclesTestFee = 30;
+                private static DateTime _PublicVehiclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _AgriculturalVehiclesTestFee = 30;
+                private static DateTime _AgriculturalVehiclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _BusesTestFee = 30;
+                private static DateTime _BusesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                private static decimal _HeavyVhiclesTestFee = 30;
+                private static DateTime _HeavyVhiclesFeeAppliesAfter = new DateTime(2026, 1, 1);
+
+                public static decimal? GetCashedFeeIfInDateRange(DateTime TestDate, LicenseClass Class)
+                {
+                    switch (Class)
+                    {
+                        case LicenseClass.Motorcycles:
+                            if (TestDate < _MotorcyclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _MotorcyclesTestFee;
+
+                        case LicenseClass.LargeMotorcycles:
+                            if (TestDate < _LargeMotorcyclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _LargeMotorcyclesTestFee;
+
+                        case LicenseClass.RegularCar:
+                            if (TestDate < _RegularCarFeeAppliesAfter)
+                                return null;
+                            else
+                                return _RegularCarTestFee;
+
+                        case LicenseClass.PublicVehicles:
+                            if (TestDate < _PublicVehiclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _PublicVehiclesTestFee;
+
+                        case LicenseClass.AgriculturalVehicles:
+                            if (TestDate < _AgriculturalVehiclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _AgriculturalVehiclesTestFee;
+
+                        case LicenseClass.Buses:
+                            if (TestDate < _BusesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _BusesTestFee;
+
+                        default: // LicenseClass.HeavyVhicles
+                            if (TestDate < _HeavyVhiclesFeeAppliesAfter)
+                                return null;
+                            else
+                                return _HeavyVhiclesTestFee;
+
+
+                    }
+                }
+
+
+            }
+
+            // General Test information //
             public readonly static TimeSpan MaximumPeriodToSetTestResulte = new TimeSpan(7,0,0,0,0);
-            public readonly static TimeSpan EyeTestExpirationPeriod = new TimeSpan(180,0,0,0);
-            public readonly static TimeSpan DrivingTestExpirationPeriod = new TimeSpan(180, 0, 0, 0);
-            public readonly static TimeSpan TheoreticalTestExpirationPeriod = new TimeSpan(180, 0, 0, 0);
+
         }
 
         public static class License
         {
-            private readonly static int _MotorcyclesLicenseYears = 1;
-            private readonly static int _LargeMotorcyclesLicenseYears = 1;
-            private readonly static int _RegularCarLicenseYears = 1;
-            private readonly static int _PublicVehiclesLicenseYears = 1;
-            private readonly static int _AgriculturalVehiclesLicenseYears = 1;
-            private readonly static int _BusesLicenseYears = 1;
-            private readonly static int _HeavyVhiclesLicenseYears = 1;
+            private static readonly TimeSpan _MotorcyclesLicenseYears = new TimeSpan(365,0,0,0);
+            private static readonly TimeSpan _LargeMotorcyclesLicenseYears = new TimeSpan(365, 0, 0, 0);
+            private static readonly TimeSpan _RegularCarLicenseYears = new TimeSpan(365, 0, 0, 0);
+            private static readonly TimeSpan _PublicVehiclesLicenseYears = new TimeSpan(365, 0, 0, 0);
+            private static readonly TimeSpan _AgriculturalVehiclesLicenseYears = new TimeSpan(365, 0, 0, 0);
+            private static readonly TimeSpan _BusesLicenseYears = new TimeSpan(365, 0, 0, 0);
+            private static readonly TimeSpan _HeavyVhiclesLicenseYears = new TimeSpan(365, 0, 0, 0);
 
-            public static int HowManyYears(LicenseClass Class)
+            public static TimeSpan HowMuchTimeToExpier(LicenseClass Class)
             {
                 switch (Class)
                 {
                     case LicenseClass.Motorcycles:
-                        return MotorcyclesLicenseYears;
+                        return _MotorcyclesLicenseYears;
                     case LicenseClass.LargeMotorcycles:
-                        return LargeMotorcyclesLicenseYears;
+                        return _LargeMotorcyclesLicenseYears;
                     case LicenseClass.RegularCar:
-                        return RegularCarLicenseYears;
+                        return _RegularCarLicenseYears;
                     case LicenseClass.PublicVehicles:
-                        return PublicVehiclesLicenseYears;
+                        return _PublicVehiclesLicenseYears;
                     case LicenseClass.AgriculturalVehicles:
-                        return AgriculturalVehiclesLicenseYears;
+                        return _AgriculturalVehiclesLicenseYears;
                     case LicenseClass.Buses:
-                        return BusesLicenseYears;
+                        return _BusesLicenseYears;
                     default: // LicenseClass.HeavyVhicles 
-                        return HeavyVhiclesLicenseYears;
+                        return _HeavyVhiclesLicenseYears;
                 }
             }
 
@@ -154,9 +392,9 @@ namespace General
         public static class InternationalLicense
         {
             // when "= false" the international license expiration date can not be after Local on expiration date //
-            public readonly static bool _AllowInternationalLicenseExpirationDateToByPassLocalOne = false;
+            public readonly static bool AllowInternationalLicenseExpirationDateToByPassLocalOne = false;
 
-            public readonly static int InternationalLicenseYears = 1;
+            public readonly static TimeSpan InternationalLicenseYears = new TimeSpan(365, 0, 0, 0);
 
             public readonly static decimal InternationalLicenseFee = 1;
 
@@ -167,6 +405,31 @@ namespace General
 
 }
 
+namespace General
+{
+    public static class GeneralFunctions
+    {
+        public static bool IsValidImage(string Path)
+        {
+            if (!File.Exists(Path))
+                return false;
+
+            try
+            {
+                using (var Img = Image.FromFile(Path))
+                {
+                }
+            }
+            catch
+            {
+                return false;
+            }
+            return true;
+        }
+
+    }
+}
+        // Enums //
 namespace General
 {
 

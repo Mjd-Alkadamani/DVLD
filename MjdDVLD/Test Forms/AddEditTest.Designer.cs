@@ -156,7 +156,6 @@ namespace MjdDVLD.Test_Forms
             this.btnSave.TabIndex = 43;
             this.btnSave.Text = "Save";
             this.btnSave.UseVisualStyleBackColor = true;
-            this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
             // lblCreatedAcordingToApplication
             // 

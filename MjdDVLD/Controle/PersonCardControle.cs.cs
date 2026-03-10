@@ -23,12 +23,12 @@ namespace MjdDVLD
             int NationalityCountryID, string NationalNo, DateTime DateOfBirth, string Email, string Address, string Phone, string ImagePath)
         {
             if(Gendor == Gendor.Mail)
-            { pbPhoto.ErrorImage = new Bitmap(SettingsClass.MaleErrorImagePath) ; }
+            { pbPhoto.ErrorImage = new Bitmap(SettingsClass.MaleProfileErrorImagePath) ; }
             else
-            { pbPhoto.ErrorImage = new Bitmap(SettingsClass.FemaleErrorImagePath); }
+            { pbPhoto.ErrorImage = new Bitmap(SettingsClass.FemaleProfileErrorImagePath); }
 
             if (!string.IsNullOrEmpty(ImagePath))
-                pbPhoto.ImageLocation = SettingsClass.ImageLocation + ImagePath;
+                pbPhoto.ImageLocation = SettingsClass.ProfileImagesPath + ImagePath;
 
             lblFirstName.Text = FirstName;
             lblScoundName.Text = SecondName;

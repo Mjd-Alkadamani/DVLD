@@ -47,7 +47,6 @@ namespace MjdDVLD
             Licenses.OnEditButtonClick += EditLicense;
             Licenses.OnShowCardButtonClick += ShowLicenseCard;
             Licenses.OnRefrashButtonClick += RefrashLicenses;
-            Licenses.OnDeletelButtonClick += DeleteLicenses;
 
             Licenses.ShowDialog();
         }
@@ -79,17 +78,13 @@ namespace MjdDVLD
             Table = DVLDApp.MangeLicenses.ListAllLicenses();
         }
 
-        private bool DeleteLicenses(object sender, int ID)
-        {
-            return DVLDApp.MangeLicenses.DeleteLicense(ID);
-        }
 
 
         ///////////// Ditened Licenses /////////////
 
         private void ditenedLicensesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DataTable table = DVLDApp.MangeDetainedLicenses.ListAllDetainedLicenses();
+            DataTable table = DVLDApp.MangeDetainingRecords.ListAllDetainedLicenses();
 
             if (table.Rows.Count == 0)
             {
@@ -107,7 +102,7 @@ namespace MjdDVLD
 
         private void diteningRecordsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DataTable table = DVLDApp.MangeDetainedLicenses.ListAllDetainedLicenses();
+            DataTable table = DVLDApp.MangeDetainingRecords.ListAllDetainedLicenses();
 
             if (table.Rows.Count == 0)
             {
@@ -194,13 +189,12 @@ namespace MjdDVLD
 
 
             ListAllForm DriversList = new ListAllForm(table, "Users", new ListAllForm.Permissions(
-                    ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.Delete, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+                    ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
             DriversList.OnAddButtonClick += AddUser;
             DriversList.OnEditButtonClick += EditUser;
             DriversList.OnShowCardButtonClick += ShowUserCard;
             DriversList.OnRefrashButtonClick += RefrashUser;
-            DriversList.OnDeletelButtonClick += DeleteUser;
 
 
             DriversList.ShowDialog();
@@ -233,11 +227,6 @@ namespace MjdDVLD
             Table = DVLDApp.MangeUsers.ListAllUsers();
         }
 
-        private bool DeleteUser(object sender, int ID)
-        {
-            return DVLDApp.MangeUsers.DeleteUser(ID);
-        }
-
 
         ///////////// Drivers /////////////
 
@@ -253,13 +242,12 @@ namespace MjdDVLD
             }
 
             ListAllForm DriversList = new ListAllForm(table, "Drivers", new ListAllForm.Permissions(
-                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Delete, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
             DriversList.OnAddButtonClick += AddDriver;
             DriversList.OnEditButtonClick += EditDriver;
             DriversList.OnShowCardButtonClick += ShowDriverCard;
             DriversList.OnRefrashButtonClick += RefrashDrivers;
-            DriversList.OnDeletelButtonClick += DeleteDriver;
 
             DriversList.ShowDialog();
 
@@ -292,11 +280,6 @@ namespace MjdDVLD
             Table = DVLDApp.MangeDrivers.ListAllDrivers();
         }
 
-        private bool DeleteDriver(object sender, int ID)
-        {
-            return DVLDApp.MangeDrivers.DeleteDriver(ID);
-        }
-
         ///////////// People /////////////
 
         private void allPeopleListToolStripMenuItem_Click(object sender, EventArgs e)
@@ -311,9 +294,8 @@ namespace MjdDVLD
             }
 
             ListAllForm People = new ListAllForm(table, "People", new ListAllForm.Permissions(
-                ListAllForm.Permissions.Permission.Add, ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
+                 ListAllForm.Permissions.Permission.Edit, ListAllForm.Permissions.Permission.ShowCard, ListAllForm.Permissions.Permission.Refresh), false);
 
-            People.OnAddButtonClick += AddPerson;
             People.OnEditButtonClick += EditPerson;
             People.OnShowCardButtonClick += ShowPerson;
             People.OnRefrashButtonClick += RefrashPeople;
@@ -321,12 +303,6 @@ namespace MjdDVLD
 
             People.ShowDialog();
 
-        }
-
-        private void AddPerson(object sender)
-        {
-            MjdDVLD.People_Forms.AddEditPerson AddScreen = new People_Forms.AddEditPerson();
-            AddScreen.ShowDialog();
         }
 
         private void EditPerson(object sender, int ID)

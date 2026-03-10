@@ -9,9 +9,9 @@ using General;
 
 namespace DataAccessTier
 {
-    public class DTDetainedLicense
+    public class DTDetainLicenseRecord
     {
-        internal protected DTDetainedLicense(int DetainID, int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID,
+        internal protected DTDetainLicenseRecord(int DetainID, int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID,
              DateTime?  ReleaseDate, int? ReleasedByUserID, int? ReleaseApplicationID)
         {
             this._DetainID = DetainID;
@@ -51,18 +51,29 @@ namespace DataAccessTier
         {
             get
             {
-                if (!((ReleasedByUserID == null) == (ReleaseDate == null) == (ReleaseApplicationID == null)))
+                if (!((ReleasedByUserID == null) == (ReleaseDate == null)))
                     return true;
                 else
                     return false;
             }
         }
-    
+
+        public bool IsReleased
+        {
+            get
+            {
+                if (ReleasedByUserID == null && ReleaseDate == null)
+                    return true;
+                else
+                    return false;
+            }
+        }
+
     }
 
-    public class AccessDetainedLicenseData
+    public class AccessDetainingLicenseRecordData
     {
-        public static DTDetainedLicense FindLastDetainingOfLicense(int LicenseID)
+        public static DTDetainLicenseRecord FindLastDetainingOfLicense(int LicenseID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -80,7 +91,7 @@ namespace DataAccessTier
 
             SqlCommand Command = new SqlCommand(Query, Connection);
             Command.Parameters.AddWithValue("@LicenseID", LicenseID);
-            DTDetainedLicense FindedDetainedLicense = null;
+            DTDetainLicenseRecord FindedDetainedLicense = null;
 
             try
             {
@@ -89,7 +100,7 @@ namespace DataAccessTier
 
                 if (Reader.Read())
                 {
-                    FindedDetainedLicense = new DTDetainedLicense
+                    FindedDetainedLicense = new DTDetainLicenseRecord
                      ((int)Reader["DetainID"],
                        LicenseID,
                        (DateTime)Reader["DetainDate"],
@@ -114,7 +125,59 @@ namespace DataAccessTier
 
         }
 
-        public static DTDetainedLicense Find(int DetainID)
+        public static DTDetainLicenseRecord FindByApplicationID(int ReleaseApplicationID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT top 1"
+                  + " [DetainID]"
+                  + ",[LicenseID]"
+                  + ",[DetainDate]"
+                  + ",[FineFees]"
+                  + ",[CreatedByUserID]"
+                  + ",[ReleaseDate]"
+                  + ",[ReleasedByUserID]"
+                  + "FROM [dbo].[DetainedLicenses]"
+                  + " where ReleaseApplicationID = @ReleaseApplicationID"
+                  + " order by DetainDate desc";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@ReleaseApplicationID", ReleaseApplicationID);
+            DTDetainLicenseRecord FindedDetainedLicense = null;
+
+            try
+            {
+                Connection.Open();
+                SqlDataReader Reader = Command.ExecuteReader();
+
+                if (Reader.Read())
+                {
+                    FindedDetainedLicense = new DTDetainLicenseRecord
+                     ((int)Reader["DetainID"],
+                       (int)Reader["LicenseID"],
+                       (DateTime)Reader["DetainDate"],
+                       (decimal)Reader["FineFees"],
+                       (int)Reader["CreatedByUserID"],
+                       Reader["ReleaseDate"] == DBNull.Value ? null : (DateTime?)Reader["ReleaseDate"],
+                       Reader["ReleasedByUserID"] == DBNull.Value ? null : (int?)Reader["ReleasedByUserID"],
+                       ReleaseApplicationID
+                     );
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return FindedDetainedLicense;
+
+        }
+
+        public static DTDetainLicenseRecord Find(int DetainID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -131,7 +194,7 @@ namespace DataAccessTier
 
             SqlCommand Command = new SqlCommand(Query, Connection);
             Command.Parameters.AddWithValue("@DetainID", DetainID);
-            DTDetainedLicense FindedDetainedLicense = null;
+            DTDetainLicenseRecord FindedDetainedLicense = null;
 
             try
             {
@@ -142,7 +205,7 @@ namespace DataAccessTier
 
                 if (Reader.Read())
                 {
-                    FindedDetainedLicense = new DTDetainedLicense
+                    FindedDetainedLicense = new DTDetainLicenseRecord
                      ( DetainID,
                        (int)Reader["LicenseID"],
                        (DateTime)Reader["DetainDate"],
@@ -239,7 +302,7 @@ namespace DataAccessTier
             return Table;
         }
 
-        private static int? _AddNewDetainedLicense(ref DTDetainedLicense DetainedLicenseToAdd)
+        private static int? _AddNewDetainedLicense(ref DTDetainLicenseRecord DetainedLicenseToAdd)
         {
             if (DetainedLicenseToAdd.IsValidReleasing)
                 return null;
@@ -320,13 +383,13 @@ namespace DataAccessTier
 
         }
 
-        // (ReleaseDate & ReleasedByUserID & ReleaseApplicationID) //
-        //       are ether -All Null- or -All not Null-            //
+        //    (ReleaseDate & ReleasedByUserID)     //
+       //      are both -Null- or -Not Null-      //
 
-        public static DTDetainedLicense AddNewDetainedLicense (int LicenseID, DateTime DetainDate,
+        public static DTDetainLicenseRecord AddNewDetainedLicense (int LicenseID, DateTime DetainDate,
             decimal FineFees, int CreatedByUserID)
         {
-            DTDetainedLicense NewLicense = new DTDetainedLicense(-1, LicenseID, DetainDate, FineFees,
+            DTDetainLicenseRecord NewLicense = new DTDetainLicenseRecord(-1, LicenseID, DetainDate, FineFees,
                 CreatedByUserID, null, null, null);
 
             int? ID = _AddNewDetainedLicense( ref NewLicense);
@@ -341,10 +404,10 @@ namespace DataAccessTier
             }
         }
         
-        public static DTDetainedLicense AddNewDetainedLicense (int LicenseID, DateTime DetainDate,
+        public static DTDetainLicenseRecord AddNewDetainedLicense (int LicenseID, DateTime DetainDate,
             decimal FineFees, int CreatedByUserID, DateTime? ReleaseDate, int? ReleasedByUserID, int? ReleaseApplicationID)
         {
-            DTDetainedLicense NewLicense = new DTDetainedLicense(-1, LicenseID, DetainDate, FineFees, CreatedByUserID,
+            DTDetainLicenseRecord NewLicense = new DTDetainLicenseRecord(-1, LicenseID, DetainDate, FineFees, CreatedByUserID,
                 ReleaseDate, ReleasedByUserID, ReleaseApplicationID);
 
             int? ID = _AddNewDetainedLicense(ref NewLicense);
@@ -362,28 +425,33 @@ namespace DataAccessTier
         public static bool UpdateDetainedLicense(int DetainID, int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID,
              DateTime? ReleaseDate, int? ReleasedByUserID, int? ReleaseApplicationID)
         {            
-            return UpdateDetainedLicense(new DTDetainedLicense(DetainID, LicenseID, DetainDate, FineFees, CreatedByUserID,
+            return _UpdateDetainingLicenseRecord(new DTDetainLicenseRecord(DetainID, LicenseID, DetainDate, FineFees, CreatedByUserID,
                     ReleaseDate, ReleasedByUserID, ReleaseApplicationID));
 
         }
 
-        public static bool UpdateDetainedLicense(DTDetainedLicense DetainedLicenseToUpdate)
+        private static bool _UpdateDetainingLicenseRecord(DTDetainLicenseRecord DetainedLicenseToUpdate)
         {
+            if (DetainedLicenseToUpdate == null)
+                return false;
+
+
             if (!DetainedLicenseToUpdate.IsValidReleasing) 
                 return false;
 
-            if (DetainedLicenseToUpdate.ReleaseApplicationID != null)
-                if (!AccessLicenseData.ActivateLicense(DetainedLicenseToUpdate.LicenseID))
-                    return false;
+            DTDetainLicenseRecord OldDetainedRecord = Find(DetainedLicenseToUpdate.DetainID);
 
-            DTDetainedLicense DetainedRecordToEdit = Find(DetainedLicenseToUpdate.DetainID);
-
-            if (DetainedRecordToEdit == null)
+            if (OldDetainedRecord == null)
                 return false;
 
-            if (DetainedRecordToEdit.ReleaseApplicationID != null &&
+            if (OldDetainedRecord.ReleaseApplicationID != null &&
                 DetainedLicenseToUpdate.ReleaseApplicationID == null)
                 return false;
+
+            // Be Carefull this check should be directly before executing the SQL Command
+            if (!OldDetainedRecord.IsReleased && DetainedLicenseToUpdate.IsReleased)
+                if (!AccessLicenseData.ActivateLicense(DetainedLicenseToUpdate.LicenseID))
+                    return false;
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -391,13 +459,13 @@ namespace DataAccessTier
 
               "UPDATE[dbo].[DetainedLicenses]" +
               "SET " +
-              ",[LicenseID]            = @LicenseID" +
-              ",[DetainDate]           = @DetainDate" +
-              ",[FineFees]            = @FineFees" +
-              ",[CreatedByUserID]             = @CreatedByUserID" +
-              ",[ReleaseDate]               = @ReleaseDate" +
-              ",[ReleasedByUserID]              = @ReleasedByUserID" +
-              ",[ReleaseApplicationID]                = @ReleaseApplicationID" +
+              " [LicenseID] = @LicenseID" +
+              ",[DetainDate] = @DetainDate" +
+              ",[FineFees] = @FineFees" +
+              ",[CreatedByUserID] = @CreatedByUserID" +
+              ",[ReleaseDate] = @ReleaseDate" +
+              ",[ReleasedByUserID] = @ReleasedByUserID" +
+              ",[ReleaseApplicationID] = @ReleaseApplicationID" +
                    " WHERE DetainID = @DetainID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
@@ -450,6 +518,195 @@ namespace DataAccessTier
                 if (DetainedLicenseToUpdate.ReleaseApplicationID != null)
                     if (!AccessLicenseData.DeactivateLicense(DetainedLicenseToUpdate.LicenseID))
                         AccessLicenseData.DeactivateLicense(DetainedLicenseToUpdate.LicenseID);
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateFineFee(int DetainedRecordIDToUpdate, decimal NewFineFee)
+        {
+            if (DetainedRecordIDToUpdate < 0)
+                return false;
+            if (NewFineFee < 0)
+                return false;
+
+            DTDetainLicenseRecord RecordToUpdate = Find(DetainedRecordIDToUpdate);
+
+            if (RecordToUpdate == null)
+                return false;
+
+            if (RecordToUpdate.IsReleased)
+                return false;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+              "UPDATE[dbo].[DetainedLicenses]" +
+              " SET" +
+              " [FineFees] = @FineFees" +
+                   " WHERE DetainID = @DetainID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@FineFees", NewFineFee);
+
+            Command.Parameters.AddWithValue("@DetainID", DetainedRecordIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool ReleaseDetainingRecord(int DetainedRecordIDToRelease,int ReleasedByUserID)
+        {
+            if (DetainedRecordIDToRelease < 0)
+                return false;
+            if (ReleasedByUserID < 0)
+                return false;
+
+            if (!AccessUserData.IsExist(ReleasedByUserID))
+                return false;
+
+            DTDetainLicenseRecord RecordToRelease = Find(DetainedRecordIDToRelease);
+
+            if (RecordToRelease == null)
+                return false;
+
+            if (RecordToRelease.ReleaseApplicationID == null)
+                return false;
+
+            if (RecordToRelease.IsReleased)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[DetainedLicenses]" +
+              " SET " +
+              " [ReleaseDate] = @ReleaseDate" +
+              ",[ReleasedByUserID] = @ReleasedByUserID" +
+                   " WHERE DetainID = @DetainID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+           
+            Command.Parameters.AddWithValue("@ReleaseDate", DateTime.Now);
+            Command.Parameters.AddWithValue("@ReleasedByUserID", ReleasedByUserID);
+
+            Command.Parameters.AddWithValue("@DetainID", DetainedRecordIDToRelease);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            if (DoesUpdateSucceded == true)
+                if (!AccessLicenseData.ActivateLicense(RecordToRelease.LicenseID))
+                    AccessLicenseData.ActivateLicense(RecordToRelease.LicenseID);
+
+            return DoesUpdateSucceded;
+        }       
+
+        public static bool AttachToAppliceation(int DetainingRecordToAttach, int ApplicationIDAttachTo)
+        {
+            // All vlidations here are data integrity related //
+
+            DTDetainLicenseRecord RecordToAttachTo = Find(DetainingRecordToAttach);
+
+            if (RecordToAttachTo == null)
+                return false;
+
+            if (RecordToAttachTo.IsReleased)
+                return false;
+
+            if (RecordToAttachTo.ReleaseApplicationID != null)
+            {
+                if (!SettingsClass.Application.IsExpired(
+                        (DateTime)AccessApplicationData.GetApplicationCreationDate((int)RecordToAttachTo.ReleaseApplicationID)))
+                    return false;
+            }  
+
+            DTApplication ApplicationToAttachWith = AccessApplicationData.Find(ApplicationIDAttachTo);
+
+            if (ApplicationToAttachWith == null)
+                return false;
+
+            if (ApplicationType.ReleaseLicense != ApplicationToAttachWith.ApplicationTypeID)
+                return false;
+
+            if (ApplicationToAttachWith.IsExpired)
+                return false;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[DetainedLicenses]" +
+              "SET " +
+              "[ReleaseApplicationID] = @ReleaseApplicationID" +
+                   " WHERE DetainID = @DetainID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@ReleaseApplicationID", ApplicationIDAttachTo);
+            
+            Command.Parameters.AddWithValue("@DetainID", DetainingRecordToAttach);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
 
             return DoesUpdateSucceded;
         }

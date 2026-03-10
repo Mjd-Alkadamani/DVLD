@@ -412,6 +412,20 @@ namespace DataAccessTier
 
         public static bool UpdateLicense(DTLicense LicenseToUpdate)
         {
+            DTLicense OldLicense = Find(LicenseToUpdate.LicenseID);
+
+            if (OldLicense.DriverID != LicenseToUpdate.DriverID ||
+                 OldLicense.LocalDrivingLicenseApplicationID != LicenseToUpdate.LocalDrivingLicenseApplicationID ||
+                  OldLicense.LicenseClass != LicenseToUpdate.LicenseClass ||
+                   OldLicense.IssueDate != LicenseToUpdate.IssueDate ||
+                    OldLicense.IssueReason != LicenseToUpdate.IssueReason ||
+                     OldLicense.CreatedByUserID != LicenseToUpdate.CreatedByUserID)
+                return false;
+
+
+            if (LicenseToUpdate.ExpirationDate < DateTime.Now)
+                return false;
+
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -443,6 +457,158 @@ namespace DataAccessTier
             Command.Parameters.AddWithValue("@CreatedByUserID", LicenseToUpdate.CreatedByUserID);
 
             Command.Parameters.AddWithValue("@LicenseID", LicenseToUpdate.LicenseID);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateActivationStatus(int LicenseIDToUpdate, bool NewStatus)
+        {
+            DTLicense OldLicense = Find(LicenseIDToUpdate);
+
+            if (OldLicense == null)
+                return false;
+
+            if (OldLicense.IsActive == NewStatus)
+                return false;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Licenses]" +
+              "SET " +
+              " [IsActive] = @IsActive" +
+                    " WHERE LicenseID = @LicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@IsActive", NewStatus);
+
+            Command.Parameters.AddWithValue("@LicenseID", LicenseIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateNote(int LicenseIDToUpdate, string NewNote)
+        {
+            DTLicense OldLicense = Find(LicenseIDToUpdate);
+
+            if (OldLicense == null)
+                return false;
+            
+            if (OldLicense.Notes == NewNote)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Licenses]" +
+              "SET " +
+              " [Notes] = @Notes" +
+                    " WHERE LicenseID = @LicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@Notes", NewNote);
+
+            Command.Parameters.AddWithValue("@LicenseID", LicenseIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateExpirationDate(int LicenseIDToUpdate, DateTime NewDate)
+        {
+            DTLicense OldLicense = Find(LicenseIDToUpdate);
+
+            if (OldLicense == null)
+                return false;
+
+            if (OldLicense.ExpirationDate == NewDate)
+                return false;
+
+            if (NewDate < DateTime.Now)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Licenses]" +
+              "SET " +
+              " [ExpirationDate]  = @ExpirationDate" +
+                    " WHERE LicenseID = @LicenseID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@ExpirationDate", NewDate);
+
+            Command.Parameters.AddWithValue("@LicenseID", LicenseIDToUpdate);
 
             bool DoesUpdateSucceded = false;
 

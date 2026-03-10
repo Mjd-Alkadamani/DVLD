@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
+using System.IO;
+using System.Drawing;
 using DataAccessTier;
 using General;
 
@@ -11,11 +13,12 @@ namespace BusinessTier
 {
     public static class DVLDApp
     {
+
+
         public static void LoadTheDBConnection()
         {
-            AccessUserData.LoadTheDBConnection();
+            InitializingDate.LoadTheDBConnection();
         }
-
 
         public static bool LogInWith(string UserNameOrID, string PassWord)
         {
@@ -52,32 +55,48 @@ namespace BusinessTier
         }
 
 
-        private static User _LogedInUser;
-
         public static User LogedInUser { get { return _LogedInUser; } }
+        private static User _LogedInUser;
 
 
         public static class MangePeople
         {
 
-            public static bool Add(Person PersonToAdd)
+            internal static Person _Add(Person PersonToAdd)
             {
+                if (PersonToAdd == null)
+                    return null;
 
                 if (PersonToAdd.PersonID != -1)
-                { return false; }
+                    return null;
 
-                if (!string.IsNullOrEmpty(PersonToAdd.NationalNo) && !string.IsNullOrEmpty(PersonToAdd.FirstName) && !string.IsNullOrEmpty(PersonToAdd.SecondName) &&
-                    !string.IsNullOrEmpty(PersonToAdd.LastName) && !string.IsNullOrEmpty(PersonToAdd.Address) && !string.IsNullOrEmpty(PersonToAdd.Phone) && !string.IsNullOrEmpty(PersonToAdd.ImagePath))
-                { return false; }
+                if (PersonToAdd.NationalityCountryID < 0)
+                    return null;
 
-                else
-                {
-                    DataAccessTier.DTPerson P = AccessPersonData.AddNewPerson(PersonToAdd.NationalNo, PersonToAdd.FirstName, PersonToAdd.SecondName,
-                        PersonToAdd.ThirdName, PersonToAdd.LastName, PersonToAdd.DateOfBirth, PersonToAdd.Gendor, PersonToAdd.Address, PersonToAdd.Phone,
-                        PersonToAdd.Email, PersonToAdd.NationalityCountryID, PersonToAdd.ImagePath);
+                if (!AccessCountriesData.IsExist(PersonToAdd.NationalityCountryID))
+                    return null;
 
-                    return P != null;
-                }
+                if (string.IsNullOrEmpty(PersonToAdd.NationalNo) ||
+                    string.IsNullOrEmpty(PersonToAdd.FirstName) ||
+                    string.IsNullOrEmpty(PersonToAdd.SecondName) ||
+                    string.IsNullOrEmpty(PersonToAdd.LastName) ||
+                    string.IsNullOrEmpty(PersonToAdd.Address) ||
+                    string.IsNullOrEmpty(PersonToAdd.Phone) ||
+                    string.IsNullOrEmpty(PersonToAdd.Email) ||
+                    string.IsNullOrEmpty(PersonToAdd.ImagePath))
+                    return null;
+
+
+                if (PersonToAdd.DateOfBirth.AddYears(18) > DateTime.Now)
+                    return null;
+
+
+                Person P = AccessPersonData.AddNewPerson(PersonToAdd.NationalNo, PersonToAdd.FirstName, PersonToAdd.SecondName,
+                    PersonToAdd.ThirdName, PersonToAdd.LastName, PersonToAdd.DateOfBirth, PersonToAdd.Gendor, PersonToAdd.Address, PersonToAdd.Phone,
+                    PersonToAdd.Email, PersonToAdd.NationalityCountryID, PersonToAdd.ImagePath).ToPerson();
+
+                return P;
+
             }
 
             public static bool Update(Person PersonToUpdate)
@@ -86,8 +105,18 @@ namespace BusinessTier
                 if (PersonToUpdate.PersonID == -1)
                     return false;
 
-                if (!AccessPersonData.IsExist(PersonToUpdate.PersonID))
-                { return false; }
+                Person OldPerson = AccessPersonData.Find(PersonToUpdate.PersonID).ToPerson();
+
+                if (OldPerson == null)
+                    return false;
+
+                if (OldPerson.NationalNo != PersonToUpdate.NationalNo ||
+                     OldPerson.NationalityCountryID != PersonToUpdate.NationalityCountryID)
+                    return false;
+
+                if (PersonToUpdate.DateOfBirth.AddYears
+                     (SettingsClass.PeopleSettings.MinimumAgeForPersonOnTheSystem) > DateTime.Now)
+                    return false;
 
                 return AccessPersonData.UpdatePerson(PersonToUpdate.PersonID, PersonToUpdate.NationalNo, PersonToUpdate.FirstName,
                     PersonToUpdate.SecondName, PersonToUpdate.ThirdName, PersonToUpdate.LastName, PersonToUpdate.DateOfBirth, PersonToUpdate.Gendor,
@@ -119,39 +148,92 @@ namespace BusinessTier
                 return AccessPersonData.IsExist(PersonIDToFind);
             }
 
-            public static bool IsExist(string NationalNumber)
+            public static bool IsExist(string NationalNumber,int NationalityCountryID)
             {
-                return AccessPersonData.IsExist(NationalNumber);
+                return AccessPersonData.IsExist(NationalNumber, NationalityCountryID);
             }
 
         }
 
         public static class MangeUsers
         {
-            public static bool Add(User UserToAdd)
+            public static User Add(User UserToAdd)
             {
+                if (UserToAdd == null)
+                    return null;
 
                 if (UserToAdd.UserID != -1)
-                { return false; }
+                    return null;
 
-                if (string.IsNullOrEmpty(UserToAdd.UserName) || string.IsNullOrEmpty(UserToAdd.Password))
-                { return false; }
+                if (string.IsNullOrEmpty(UserToAdd.UserName))
+                    return null;
 
-                else
-                {
-                    DataAccessTier.DTUser U = AccessUserData.AddNewUser(UserToAdd.PersonID, UserToAdd.UserName, UserToAdd.Password, UserToAdd.IsActive);
+                if (string.IsNullOrEmpty(UserToAdd.Password))
+                    return null;
 
-                    return U != null;
-                }
+                if (UserToAdd.Password.Length < 5)
+                    return null;
+
+                if (UserToAdd.PersonID < 0)
+                    return null;
+
+                if (!AccessPersonData.IsExist(UserToAdd.PersonID))
+                    return null;
+
+                if (AccessUserData.IsExistByPersonID(UserToAdd.PersonID))
+                    return null;
+
+
+                UserToAdd.IsActive = true;
+
+
+                User U = AccessUserData.AddNewUser
+                    (UserToAdd.PersonID, UserToAdd.UserName, UserToAdd.Password, UserToAdd.IsActive).ToUser();
+
+                return U;
+
+            }
+
+            public static User Add(User UserToAdd,Person PersonToAdd)
+            {
+                if (UserToAdd == null || PersonToAdd == null)
+                    return null;
+
+                Person AddedPerson = MangePeople._Add(PersonToAdd);
+
+                if (AddedPerson == null)
+                    return null;
+
+                UserToAdd.PersonID = AddedPerson.PersonID;
+
+                User AddedUser = Add(UserToAdd);
+
+                if (AddedUser == null)
+                    AccessPersonData.DeletePerson(AddedPerson.PersonID);
+
+                return AddedUser;
             }
 
             public static bool Update(User UserToUpdate)
             {
-                if (UserToUpdate.UserID == -1)
+                if (UserToUpdate == null)
                     return false;
 
-                if (!AccessUserData.IsExist(UserToUpdate.UserID))
-                { return false; }
+                if (UserToUpdate.UserID < 0)
+                    return false;
+
+                User OldUser = AccessUserData.Find(UserToUpdate.UserID).ToUser();
+
+                if (OldUser == null)
+                    return false;
+
+                if (OldUser.PersonID != UserToUpdate.PersonID)
+                    return false;
+
+                if (OldUser.Password == UserToUpdate.Password &&
+                    OldUser.UserName == UserToUpdate.UserName &&
+                    OldUser.IsActive == UserToUpdate.IsActive)
+                    return false;
 
                 return AccessUserData.UpdateUser(UserToUpdate.UserID, UserToUpdate.PersonID, UserToUpdate.UserName, UserToUpdate.Password, UserToUpdate.IsActive);
             }
@@ -176,9 +258,9 @@ namespace BusinessTier
                 return AccessUserData.IsExist(UserIDToFind);
             }
 
-            public static bool IsExist(string NationalNumber)
+            public static bool IsExist(string UserName)
             {
-                return AccessUserData.IsExist(NationalNumber);
+                return AccessUserData.IsExist(UserName);
             }
 
             public static bool IsExistByPersonID(int PersonID)
@@ -186,51 +268,33 @@ namespace BusinessTier
                 return AccessUserData.IsExistByPersonID(PersonID);
             }
 
-            public static bool DeleteUser(int UserIDToDelete)
-            {
-                return AccessUserData.DeleteUser(UserIDToDelete);
-            }
-
         }
-
-
-
+        
         public static class MangeApplications
         {
-            /*public static class Update -- To Be Done --
-              {
-                
-                   checking if the appliction is expired
-                   if (DateTime.Now.Subtract(ApplicationToAdd.ApplicationDate) > new TimeSpan(SettingsClass.ApplicationExpirationPeriod, 0, 0, 0))
-                   return false;
-                 
-              }*/
-
-            static class Fees
+            public static class Fees
             {
                 public static decimal? GetToatlApplicationFees(ApplicationType Type)
                 {
-                    decimal? ApplicationFees = SettingsClass.Application.GetLocalLicenseIssuingFees(Type);
+                    decimal? ApplicationFees = SettingsClass.Application.GetBaseApplicationFees(Type);
 
                     if (ApplicationFees == null)
                         return null;
-                    else
-                        ApplicationFees += SettingsClass.Application.BaseApplicationFees;
 
-                    
                     return ApplicationFees;
                 }
 
                 public static decimal GetIssuingNewLicenseApplicationTotalFees(LicenseClass Class)
                 {
-                    return SettingsClass.Application.BaseApplicationFees + SettingsClass.License.WhatIsTheFeeForLicense(Class);
+                    return SettingsClass.Application.GetBaseApplicationFees(ApplicationType.LicenseIssuance) 
+                        + SettingsClass.License.WhatIsTheFeeForLicense(Class);
                 }
 
-                public static decimal GetReleaseLicenseApplicationTotalFees(int LicenseIDToRelease)
+                public static decimal? GetReleaseLicenseApplicationTotalFees(int LicenseIDToRelease)
                 {
-                    decimal ApplicationFees = SettingsClass.Application.BaseApplicationFees;
+                    decimal ApplicationFees = SettingsClass.Application.GetBaseApplicationFees(ApplicationType.ReleaseLicense);
 
-                    decimal? FineFee = AccessDetainedLicenseData.HowMuchTheFineFeeForLicense(LicenseIDToRelease);
+                    decimal? FineFee = AccessDetainingLicenseRecordData.HowMuchTheFineFeeForLicense(LicenseIDToRelease);
 
                     if (FineFee == null)
                         return -1;
@@ -244,187 +308,239 @@ namespace BusinessTier
 
             public static class Add
             {
-                internal static int _Application(Application ApplicationToAdd,LicenseClass? Class = null, int? DetainedLicenseID = null)
+                private static Application _Application(Application ApplicationToAdd, LicenseClass? Class = null, int? TheDetainedLicenseID = null)
                 {
                     if (ApplicationStatus.Canceled == ApplicationToAdd.ApplicationStatus)
-                        return -1;
+                        return null;
 
-                    if (AccessApplicationData.FindDosePersonHaveVliedAppicationOfType(ApplicationToAdd.ApplicantPersonID, ApplicationToAdd.ApplicationType) != true)
-                        return -1;
-                    else if (ApplicationToAdd.ApplicationType == ApplicationType.LicenseIssuance) 
+                    bool? DoesHaveApplicationOfType =
+                        AccessApplicationData.DoesPersonHaveActiveAppicationOfType(ApplicationToAdd.ApplicantPersonID, ApplicationToAdd.ApplicationType);
+
+                    if (DoesHaveApplicationOfType == null)
+                        return null;
+
+                    if (DoesHaveApplicationOfType == true)
                     {
-                        DateTime? PersonBirthDate = AccessPersonData.GetPersonBirthDate(ApplicationToAdd.ApplicantPersonID);
+                        switch (ApplicationToAdd.ApplicationType)
+                        {
+                            case ApplicationType.ReleaseLicense:
+                                if (TheDetainedLicenseID == null)
+                                    return null;
 
-                        if (PersonBirthDate == null)
-                            return -1;
-                        else if (!SettingsClass.License.IsDriverOledEnough((DateTime)PersonBirthDate, (LicenseClass)Class)) 
-                            return -1;
+                                DetainLicenseRecord DetainingRecord = AccessDetainingLicenseRecordData.FindLastDetainingOfLicense((int)TheDetainedLicenseID).ToDetainLicenseRecord();
+
+                                if (DetainingRecord.IsReleased)
+                                    return null;
+
+                                if (DetainingRecord.ReleaseApplicationID != null)
+                                    if (!SettingsClass.Application.IsExpired((DateTime)AccessApplicationData.GetApplicationCreationDate((int)DetainingRecord.ReleaseApplicationID)))
+                                        return null;                               
+                                break;
+
+                            case ApplicationType.LicenseIssuance:
+                                if (Class == null)
+                                    return null;
+
+                                LocalDrivingLicenseApplication LocalDrivingLicenseApplication = 
+                                    AccessLocalDrivingLicenseApplicationData.FindLeatestActiveLocalAppOfClassForPersonID
+                                       (ApplicationToAdd.ApplicantPersonID, (LicenseClass)Class).ToLocalDrivingLicenseApplication();
+
+                                if (LocalDrivingLicenseApplication != null)
+                                {
+                                    Application OldApplication = AccessApplicationData.Find(LocalDrivingLicenseApplication.ApplicationID).ToApplication();
+
+                                    if (!OldApplication.IsExpired)
+                                        return null;
+                                }
+                                else
+                                    return null;
+
+                                DateTime? PersonBirthDate = AccessPersonData.GetPersonBirthDate(ApplicationToAdd.ApplicantPersonID);
+
+                                if (PersonBirthDate == null)
+                                    return null;
+                                else if (!SettingsClass.License.IsDriverOledEnough((DateTime)PersonBirthDate, (LicenseClass)Class))
+                                    return null;
+                                break;
+                            
+                            default:
+                                return null;
+                        }
                     }
+
                     decimal TotalApplicationFees;
 
                     switch (ApplicationToAdd.ApplicationType)
                     {
                         case ApplicationType.LicenseIssuance:
                             if (Class == null)
-                                return -1;
+                                return null;
                             TotalApplicationFees = Fees.GetIssuingNewLicenseApplicationTotalFees((LicenseClass)Class);
                             break;
+
                         case ApplicationType.ReleaseLicense:
-                            if (DetainedLicenseID == null)
-                                return -1;
-                            TotalApplicationFees = Fees.GetReleaseLicenseApplicationTotalFees((int)DetainedLicenseID);
+                            if (TheDetainedLicenseID == null)
+                                return null;
+                            decimal? ReleaseApplicationFee =
+                             Fees.GetReleaseLicenseApplicationTotalFees((int)TheDetainedLicenseID);
+                            if (ReleaseApplicationFee == null)
+                                return null;
+                            else
+                                TotalApplicationFees = (decimal)ReleaseApplicationFee;
                             break;
+
                         default:
                             TotalApplicationFees = (decimal)Fees.GetToatlApplicationFees(ApplicationToAdd.ApplicationType);
                             break;
                     }
 
                     // we can not take more than the applicetion cost
-                    if (TotalApplicationFees > ApplicationToAdd.PaidFees) 
-                        return -1;
+                    if (TotalApplicationFees > ApplicationToAdd.PaidFees)
+                        return null;
 
-                    var AddedApplication = DataAccessTier.AccessApplicationData.AddNewApplication(ApplicationToAdd.ApplicationID,
+                    Application AddedApplication = DataAccessTier.AccessApplicationData.AddNewApplication(ApplicationToAdd.ApplicationID,
                         DateTime.Now, ApplicationToAdd.ApplicationType, ApplicationToAdd.ApplicationStatus,
                        DateTime.Now, ApplicationToAdd.PaidFees,
-                        DVLDApp.LogedInUser.PersonID);
+                        DVLDApp.LogedInUser.PersonID).ToApplication();
 
-                    return AddedApplication == null ? -1 : AddedApplication.ApplicationID;
+                    return AddedApplication;
                 }
 
-                /*
-                    License Issuance -- done
-                    Retake Test -- done
-                    Renew Driving License -- done
-                    Missing Replacement -- doe
-                    Damaged Replacement -- done
-                    Release License -- done
-                    Issuing International License --done
-                */
-
-                
                 /* How To Use This Method --> Check the documentation */
-                public static int IssuingLocalLicenseApplication(Application ApplicationToAdd, LicenseClass Class, EyeTest EyeTest, DrivingTest DrivingTest, TheoreticalTest TheoreticalTest)
+                public static Application IssuingLocalLicenseApplication(Application ApplicationToAdd, LicenseClass Class, EyeTest EyeTest,
+                    DrivingTest DrivingTest, TheoreticalTest TheoreticalTest,string IdentificationPhotoPath,
+                    string DrivingCourseCertificatePhotoPath)
                 {
                     if (ApplicationToAdd == null ||
                         EyeTest == null ||
                         DrivingTest == null ||
                         TheoreticalTest == null ||
-                        ApplicationToAdd.ApplicationID != -1)  
-                        return -1;
-                    
+                        string.IsNullOrEmpty(IdentificationPhotoPath) ||
+                        string.IsNullOrEmpty(DrivingCourseCertificatePhotoPath) ||
+                        ApplicationToAdd.ApplicationID != -1)
+                            return null;
+
+                    if (!GeneralFunctions.IsValidImage(IdentificationPhotoPath))
+                        return null;
+                    if (!GeneralFunctions.IsValidImage(DrivingCourseCertificatePhotoPath))
+                        return null;
+
                     DateTime? PersonBirthDate = AccessPersonData.GetPersonBirthDate(ApplicationToAdd.ApplicantPersonID);
 
                     if (PersonBirthDate == null)
-                        return -1;
+                        return null;
+
+                    if (AccessLicenseData.DoseHaveActiveLicense(ApplicationToAdd.ApplicantPersonID, Class))
+                        return null;
 
                     if (!SettingsClass.License.IsDriverOledEnough((DateTime)PersonBirthDate, Class))
-                        return -1;
+                        return null;
 
                     int? DriverID = AccessDriverData.GetDriverID(ApplicationToAdd.ApplicantPersonID);
                     if (DriverID == null)
                     {
                         if (AccessLicenseData.FindTheActiveLicense((int)DriverID, Class) == null)
-                            return -1;
+                            return null;
                     }
                     else
-                        return -1;
+                        return null;
 
                     if (EyeTest.TestID != -1)
-                    { 
+                    {
                         EyeTest = DataAccessTier.AccessEyeTestData.Find(EyeTest.TestID).ToEyeTest();
                         if (EyeTest.IsExpired)
-                            return -1;
+                            return null;
                         if (EyeTest.TestResult == false)
-                            return -1;
+                            return null;
                         if (EyeTest.DidTheTestPassWithoutAttending() == true)
-                            return -1;
+                            return null;
                     }
                     if (TheoreticalTest.TestID != -1)
                     {
                         TheoreticalTest = AccessTheoreticalTestData.Find(TheoreticalTest.TestID).ToTheoreticalTest();
                         if (TheoreticalTest.IsExpired)
-                            return -1;
+                            return null;
                         if (TheoreticalTest.TestResult == false)
-                            return -1;
+                            return null;
                         if (TheoreticalTest.DidTheTestPassWithoutAttending() == true)
-                            return -1;
+                            return null;
                     }
                     if (DrivingTest.TestID != -1)
                     {
                         DrivingTest = DataAccessTier.AccessDrivingTestData.Find(DrivingTest.TestID).ToDrivingTest();
                         if (DrivingTest.IsExpired)
-                            return -1;
+                            return null;
                         if (DrivingTest.TestResult == false)
-                            return -1;
+                            return null;
                         if (DrivingTest.DidTheTestPassWithoutAttending() == true)
-                            return -1;
+                            return null;
                     }
 
                     if (ApplicationToAdd.ApplicationType != ApplicationType.LicenseIssuance)
-                        return -1;
+                        return null;
 
                     if (ApplicationToAdd.ApplicantPersonID != EyeTest.PersonID ||
                          ApplicationToAdd.ApplicantPersonID != DrivingTest.PersonID ||
                           ApplicationToAdd.ApplicantPersonID != TheoreticalTest.PersonID)
-                            return -1;
+                        return null;
 
-                    if (Class!= DrivingTest.TestClass ||
+                    if (Class != DrivingTest.TestClass ||
                          Class != TheoreticalTest.TestClass)
-                            return -1;
+                        return null;
 
-                    int DoesApplicationSucceeded = _Application(ApplicationToAdd);
+                    Application AddedAppliction = _Application(ApplicationToAdd, Class);
 
-                    if (DoesApplicationSucceeded == -1)
-                        return -1;
-                                        
+                    if (AddedAppliction == null)
+                        return null;
+
                     int? DoesEyeTestSucceeded = null;
                     int? DoesTheoreticalTestSucceeded = null;
                     int? DoesDrivingTestSucceeded = null;
 
                     if (EyeTest.TestID == -1)
                     {
-                        DoesEyeTestSucceeded = MangeEyeTests._Add(new EyeTest(EyeTest.PersonID, EyeTest.AppointmentDate, EyeTest.PaidFees, LogedInUser.UserID, DoesApplicationSucceeded, EyeTest.Notes));
+                        DoesEyeTestSucceeded = MangeEyeTests._Add(new EyeTest(EyeTest.PersonID, EyeTest.AppointmentDate, EyeTest.PaidFees, LogedInUser.UserID, AddedAppliction.ApplicationID, EyeTest.Notes));
 
                         if (DoesEyeTestSucceeded == -1)
                         {
-                            DataAccessTier.AccessApplicationData.DeleteApplication(DoesApplicationSucceeded);
-                            return -1;
+                            DataAccessTier.AccessApplicationData.DeleteApplication(AddedAppliction.ApplicationID);
+                            return null;
                         }
                     }
 
                     if (DrivingTest.TestID == -1)
                     {
-                        DoesDrivingTestSucceeded = MangeDrivingTests._Add(new DrivingTest(DrivingTest.PersonID, DrivingTest.AppointmentDate, DrivingTest.PaidFees, LogedInUser.UserID, DoesApplicationSucceeded, DrivingTest.Notes, DrivingTest.TestClass));
+                        DoesDrivingTestSucceeded = MangeDrivingTests._Add(new DrivingTest(DrivingTest.PersonID, DrivingTest.AppointmentDate, DrivingTest.PaidFees, LogedInUser.UserID, AddedAppliction.ApplicationID, DrivingTest.Notes, DrivingTest.TestClass));
 
                         if (DoesDrivingTestSucceeded == -1)
                         {
                             if (DoesEyeTestSucceeded != null)
                                 DataAccessTier.AccessEyeTestData.DeleteEyeTest((int)DoesEyeTestSucceeded);
-                            DataAccessTier.AccessApplicationData.DeleteApplication(DoesApplicationSucceeded);
-                            return -1;
+                            DataAccessTier.AccessApplicationData.DeleteApplication(AddedAppliction.ApplicationID);
+                            return null;
                         }
                     }
 
                     if (TheoreticalTest.TestID == -1)
                     {
-                        DoesTheoreticalTestSucceeded = MangeTheoreticalTests._Add(new TheoreticalTest(TheoreticalTest.PersonID, TheoreticalTest.AppointmentDate, TheoreticalTest.PaidFees, LogedInUser.UserID, DoesApplicationSucceeded, TheoreticalTest.Notes, TheoreticalTest.TestClass));
+                        DoesTheoreticalTestSucceeded = MangeTheoreticalTests._Add(new TheoreticalTest(TheoreticalTest.PersonID, TheoreticalTest.AppointmentDate, TheoreticalTest.PaidFees, LogedInUser.UserID, AddedAppliction.ApplicationID, TheoreticalTest.Notes, TheoreticalTest.TestClass));
 
                         if (DoesTheoreticalTestSucceeded == -1)
                         {
-                            if(DoesEyeTestSucceeded != null)
+                            if (DoesEyeTestSucceeded != null)
                                 DataAccessTier.AccessEyeTestData.DeleteEyeTest((int)DoesEyeTestSucceeded);
                             if (DoesDrivingTestSucceeded != null)
                                 DataAccessTier.AccessDrivingTestData.DeleteTest((int)DoesDrivingTestSucceeded);
-                            DataAccessTier.AccessApplicationData.DeleteApplication(DoesApplicationSucceeded);
-                            return -1;
+                            DataAccessTier.AccessApplicationData.DeleteApplication(AddedAppliction.ApplicationID);
+                            return null;
                         }
                     }
 
                     int DoesLocalApplicationSucceeded = MangeLocalDrivingLicenseApplications._Add
-                        (new LocalDrivingLicenseApplication(DoesApplicationSucceeded,Class
-                          , DoesEyeTestSucceeded != null ?(int)DoesEyeTestSucceeded:EyeTest.TestID,
-                          DoesTheoreticalTestSucceeded != null ? (int)DoesTheoreticalTestSucceeded:TheoreticalTest.TestID,
-                          DoesDrivingTestSucceeded != null?(int)DoesDrivingTestSucceeded:DrivingTest.TestID));
+                        (new LocalDrivingLicenseApplication(AddedAppliction.ApplicationID, Class
+                          , DoesEyeTestSucceeded != null ? (int)DoesEyeTestSucceeded : EyeTest.TestID,
+                          DoesTheoreticalTestSucceeded != null ? (int)DoesTheoreticalTestSucceeded : TheoreticalTest.TestID,
+                          DoesDrivingTestSucceeded != null ? (int)DoesDrivingTestSucceeded : DrivingTest.TestID,IdentificationPhotoPath,DrivingCourseCertificatePhotoPath));
 
                     if (DoesLocalApplicationSucceeded == -1)
                     {
@@ -435,105 +551,104 @@ namespace BusinessTier
                         if (DoesTheoreticalTestSucceeded != null)
                             DataAccessTier.AccessTheoreticalTestData.DeleteTest((int)DoesTheoreticalTestSucceeded);
 
-                        DataAccessTier.AccessApplicationData.DeleteApplication(DoesApplicationSucceeded);
-                        return -1;
+                        DataAccessTier.AccessApplicationData.DeleteApplication(AddedAppliction.ApplicationID);
+                        return null;
                     }
 
-                    return DoesApplicationSucceeded;
+                    return AddedAppliction;
                 }
 
-                public static int RetakeTestApplication(Application ApplicationToAdd, TestType Type, Test TestToSave)
+                public static Application RetakeTestApplication(Application ApplicationToAdd, TestType Type, Test TestToSave)
                 {
                     if (ApplicationType.RetakeTest != ApplicationToAdd.ApplicationType)
-                        return -1;
+                        return null;
 
                     if (ApplicationStatus.Completed != ApplicationToAdd.ApplicationStatus)
-                        return -1;
+                        return null;
 
                     if (ApplicationToAdd.ApplicantPersonID != TestToSave.PersonID)
-                        return -1;
+                        return null;
 
                     ApplicationToAdd.LastStatusDate = DateTime.Now;
-                    
-                    int DoesApplicationAddingSucceed;
 
-                    DoesApplicationAddingSucceed = MangeApplications.Add._Application(ApplicationToAdd);
+                    Application AddedAppliction
+                        = MangeApplications.Add._Application(ApplicationToAdd);
 
-                    if (DoesApplicationAddingSucceed == -1)
-                        return -1;
+                    if (AddedAppliction == null)
+                        return null;
 
                     int DoesTestAddingSucceed;
 
                     switch (Type)
                     {
                         case TestType.EyeTest:
-                            DoesTestAddingSucceed = MangeEyeTests._Add(new EyeTest(TestToSave.PersonID, TestToSave.AppointmentDate, TestToSave.PaidFees, LogedInUser.UserID, DoesApplicationAddingSucceed, TestToSave.Notes)) ;
+                            DoesTestAddingSucceed = MangeEyeTests._Add(new EyeTest(TestToSave.PersonID, TestToSave.AppointmentDate, TestToSave.PaidFees, LogedInUser.UserID, AddedAppliction.ApplicationID, TestToSave.Notes));
 
                             if (DoesTestAddingSucceed == -1)
                             {
                                 DataAccessTier.AccessApplicationData.DeleteApplication(DoesTestAddingSucceed);
-                                return -1;
+                                return null;
                             }
                             break;
                         case TestType.DrivingTest:
-                            DoesTestAddingSucceed = MangeDrivingTests._Add(new DrivingTest(TestToSave.PersonID, TestToSave.AppointmentDate, TestToSave.PaidFees, LogedInUser.UserID, DoesApplicationAddingSucceed, TestToSave.Notes,((DrivingTest)TestToSave).TestClass));
+                            DoesTestAddingSucceed = MangeDrivingTests._Add(new DrivingTest(TestToSave.PersonID, TestToSave.AppointmentDate, TestToSave.PaidFees, LogedInUser.UserID, AddedAppliction.ApplicationID, TestToSave.Notes, ((DrivingTest)TestToSave).TestClass));
 
                             if (DoesTestAddingSucceed == -1)
                             {
                                 DataAccessTier.AccessApplicationData.DeleteApplication(DoesTestAddingSucceed);
-                                return -1;
+                                return null;
                             }
                             break;
                         default: // TestType.TheoreticalTest
-                            DoesTestAddingSucceed = MangeTheoreticalTests._Add(new TheoreticalTest(TestToSave.PersonID, TestToSave.AppointmentDate, TestToSave.PaidFees, LogedInUser.UserID, DoesApplicationAddingSucceed, TestToSave.Notes, ((DrivingTest)TestToSave).TestClass));
+                            DoesTestAddingSucceed = MangeTheoreticalTests._Add(new TheoreticalTest(TestToSave.PersonID, TestToSave.AppointmentDate, TestToSave.PaidFees, LogedInUser.UserID, AddedAppliction.ApplicationID, TestToSave.Notes, ((DrivingTest)TestToSave).TestClass));
 
                             if (DoesTestAddingSucceed == -1)
                             {
                                 DataAccessTier.AccessApplicationData.DeleteApplication(DoesTestAddingSucceed);
-                                return -1;
+                                return null;
                             }
                             break;
                     }
 
 
 
-                    return DoesTestAddingSucceed;
+                    return AddedAppliction;
                 }
 
-                public static int RenewDrivingLicenseApplication(Application ApplicationToAdd,int LicenseIDToRenew,EyeTest EyeTest)
-                { 
+                public static Application RenewDrivingLicenseApplication(Application ApplicationToAdd, int LicenseIDToRenew, EyeTest EyeTest)
+                {
                     if (ApplicationToAdd == null ||
                          LicenseIDToRenew < 0 ||
                           EyeTest == null ||
                           ApplicationToAdd.ApplicationID != -1)
-                        return -1;
+                        return null;
 
                     if (EyeTest.TestID != -1)
                     {
                         EyeTest = DataAccessTier.AccessEyeTestData.Find(EyeTest.TestID).ToEyeTest();
                         if (EyeTest.IsExpired)
-                            return -1;
+                            return null;
                         if (EyeTest.TestResult == false)
-                            return -1;
+                            return null;
                         if (EyeTest.DidTheTestPassWithoutAttending() == true)
-                            return -1;
+                            return null;
                     }
-                    
+
                     if (EyeTest.PersonID != ApplicationToAdd.ApplicantPersonID)
-                        return -1;
+                        return null;
 
                     License LicenseToRenew = AccessLicenseData.Find(LicenseIDToRenew).ToLicense();
 
-                    if (AccessDetainedLicenseData.IsLicenseCurrenlyDetained(LicenseToRenew.LicenseID))
-                        return -1;
+                    if (AccessDetainingLicenseRecordData.IsLicenseCurrenlyDetained(LicenseToRenew.LicenseID))
+                        return null;
 
                     if (LicenseToRenew.IsActive == false)
-                        return -1;
+                        return null;
 
-                    int DoesApplicationSucceeded = _Application(ApplicationToAdd);
+                    Application AddedApplication = _Application(ApplicationToAdd);
 
-                    if (DoesApplicationSucceeded == -1)
-                        return -1;
+                    if (AddedApplication == null)
+                        return null;
 
                     int? DoesEyeTestSucceeded = null;
 
@@ -543,166 +658,165 @@ namespace BusinessTier
 
                         if (DoesEyeTestSucceeded == -1)
                         {
-                            AccessApplicationData.DeleteApplication(DoesApplicationSucceeded);
-                            return -1;
+                            AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                            return null;
                         }
                     }
 
                     int DoesLocalApplicationSucceeded = MangeLocalDrivingLicenseApplications._Add
-                        (new LocalDrivingLicenseApplication(DoesApplicationSucceeded, LicenseToRenew.LicenseClass, EyeTest.TestID != -1 ? EyeTest.TestID : DoesEyeTestSucceeded, null, null));
-                    
-                    if(DoesLocalApplicationSucceeded == -1)
+                        (new LocalDrivingLicenseApplication(AddedApplication.ApplicationID, LicenseToRenew.LicenseClass, EyeTest.TestID != -1 ? EyeTest.TestID : DoesEyeTestSucceeded, null, null, null, null));
+
+                    if (DoesLocalApplicationSucceeded == -1)
                     {
                         if (DoesEyeTestSucceeded != null)
                             AccessEyeTestData.DeleteEyeTest((int)DoesEyeTestSucceeded);
-                        AccessApplicationData.DeleteApplication(DoesApplicationSucceeded);
-                        return -1;
+                        AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                        return null;
                     }
 
-                    return DoesApplicationSucceeded;
+                    return AddedApplication;
 
                 }
 
                 /* How To Use This Method --> Check the documentation */
-
-                public static int MissingReplacementApplication(Application ApplicationToAdd,int LicenseIDToReplaceBasedOn)
+                public static Application MissingReplacementApplication(Application ApplicationToAdd, int LicenseIDToReplaceBasedOn)
                 {
                     if (ApplicationToAdd == null ||
                         ApplicationToAdd.ApplicationID == -1)
-                        return -1;
+                        return null;
 
                     License LicenseToReplaceBasedOn = AccessLicenseData.Find(LicenseIDToReplaceBasedOn).ToLicense();
 
                     if (AccessDriverData.GetDriverID(ApplicationToAdd.ApplicantPersonID) != LicenseToReplaceBasedOn.DriverID)
-                        return -1;
+                        return null;
 
                     if (!LicenseToReplaceBasedOn.IsActive)
-                        return -1;
-                    if (LicenseToReplaceBasedOn.IsExpired())
-                        return -1;
+                        return null;
+                    if (LicenseToReplaceBasedOn.IsExpired)
+                        return null;
 
-                    int DoseApplicetionSuccesseeded = _Application(ApplicationToAdd);
+                    Application AddedApplication = _Application(ApplicationToAdd);
 
-                    if (DoseApplicetionSuccesseeded == -1)
-                        return -1;
+                    if (AddedApplication == null)
+                        return null;
 
                     int DoseLocalApplicationSucceeded = MangeLocalDrivingLicenseApplications._Add
                        (new LocalDrivingLicenseApplication
-                        (DoseApplicetionSuccesseeded, LicenseToReplaceBasedOn.LicenseClass, null, null, null));
+                        (AddedApplication.ApplicationID, LicenseToReplaceBasedOn.LicenseClass, null, null, null, null, null));
 
                     if (DoseLocalApplicationSucceeded == -1)
                     {
-                        AccessApplicationData.DeleteApplication(DoseApplicetionSuccesseeded);
-                        return -1;
+                        AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                        return null;
                     }
 
-                    return DoseApplicetionSuccesseeded;
+                    return AddedApplication;
                 }
 
-                public static int DamagedReplacementApplication(Application ApplicationToAdd, int LicenseIDToReplaceBasedOn)
+                public static Application DamagedReplacementApplication(Application ApplicationToAdd, int LicenseIDToReplaceBasedOn)
                 {
                     if (ApplicationToAdd == null ||
                         ApplicationToAdd.ApplicationID == -1 ||
                         LicenseIDToReplaceBasedOn < 0)
-                        return -1;
+                        return null;
 
                     License LicenseToReplaceBasedOn = AccessLicenseData.Find(LicenseIDToReplaceBasedOn).ToLicense();
 
                     if (AccessDriverData.GetDriverID(ApplicationToAdd.ApplicantPersonID) != LicenseToReplaceBasedOn.DriverID)
-                        return -1;
+                        return null;
 
                     if (!LicenseToReplaceBasedOn.IsActive)
-                        return -1;
-                    if (LicenseToReplaceBasedOn.IsExpired())
-                        return -1;
+                        return null;
+                    if (LicenseToReplaceBasedOn.IsExpired)
+                        return null;
 
-                    int DoseApplicetionSuccesseeded = _Application(ApplicationToAdd);
+                    Application AddedApplication = _Application(ApplicationToAdd);
 
-                    if (DoseApplicetionSuccesseeded == -1)
-                        return -1;
+                    if (AddedApplication == null)
+                        return null;
 
                     int DoseLocalApplicationSucceeded = MangeLocalDrivingLicenseApplications._Add
                        (new LocalDrivingLicenseApplication
-                        (DoseApplicetionSuccesseeded, LicenseToReplaceBasedOn.LicenseClass, null, null, null));
+                        (AddedApplication.ApplicationID, LicenseToReplaceBasedOn.LicenseClass, null, null, null, null, null));
 
                     if (DoseLocalApplicationSucceeded == -1)
                     {
-                        AccessApplicationData.DeleteApplication(DoseApplicetionSuccesseeded);
-                        return -1;
+                        AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                        return null;
                     }
 
-                    return DoseApplicetionSuccesseeded;
+                    return AddedApplication;
                 }
 
-                public static int ReleaseLicenseApplication(Application ApplicationToAdd, int LicenseIDAskForRelease)
+                public static Application ReleaseLicenseApplication(Application ApplicationToAdd, int LicenseIDAskForRelease)
                 {
                     if (ApplicationToAdd == null ||
                         ApplicationToAdd.ApplicationID == -1 ||
                         LicenseIDAskForRelease < 0)
-                        return -1;
+                        return null;
+                      
+                    if (!AccessDetainingLicenseRecordData.IsLicenseCurrenlyDetained(LicenseIDAskForRelease))
+                        return null;
 
                     License LicenseToReplaceBasedOn = AccessLicenseData.Find(LicenseIDAskForRelease).ToLicense();
 
                     if (AccessDriverData.GetDriverID(ApplicationToAdd.ApplicantPersonID) != LicenseToReplaceBasedOn.DriverID)
-                        return -1;
-                                       
-                    int DoseApplicetionSuccesseeded = _Application(ApplicationToAdd);
+                        return null;
 
-                    if (DoseApplicetionSuccesseeded == -1)
-                        return -1;
+                    Application AddedApplication = _Application(ApplicationToAdd, null, LicenseIDAskForRelease);
 
-                    int DoseLocalApplicationSucceeded = MangeLocalDrivingLicenseApplications._Add
-                       (new LocalDrivingLicenseApplication
-                        (DoseApplicetionSuccesseeded, LicenseToReplaceBasedOn.LicenseClass, null, null, null));
+                    if (AddedApplication == null)
+                        return null;
 
-                    if (DoseLocalApplicationSucceeded == -1)
+                    bool DoseDetainingRecordsSucceeded =
+                        AccessDetainingLicenseRecordData.AttachToAppliceation(AccessDetainingLicenseRecordData.FindLastDetainingOfLicense(LicenseIDAskForRelease).DetainID,AddedApplication.ApplicationID);
+
+                    if(!DoseDetainingRecordsSucceeded)
                     {
-                        AccessApplicationData.DeleteApplication(DoseApplicetionSuccesseeded);
-                        return -1;
+                        AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                        return null;
                     }
 
-                    return DoseApplicetionSuccesseeded;
-
-
+                    return AddedApplication;
                 }
 
-                public static int IssuingInternationalLicenseApplication(Application ApplicationToAdd, EyeTest EyeTestToAdd)
+                public static Application IssuingInternationalLicenseApplication(Application ApplicationToAdd, EyeTest EyeTestToAdd)
                 {
                     if (ApplicationToAdd == null ||
                         EyeTestToAdd == null ||
                         ApplicationToAdd.ApplicationID == -1)
-                        return -1;
+                        return null;
 
                     if (EyeTestToAdd.TestID != -1)
                     {
                         EyeTestToAdd = AccessEyeTestData.Find(EyeTestToAdd.TestID).ToEyeTest();
 
                         if (EyeTestToAdd.IsExpired)
-                            return -1;
+                            return null;
                         if (EyeTestToAdd.TestResult == false)
-                            return -1;
+                            return null;
                         if (EyeTestToAdd.DidTheTestPassWithoutAttending() == true)
-                            return -1;
+                            return null;
                     }
 
                     if (EyeTestToAdd.PersonID != ApplicationToAdd.ApplicantPersonID)
-                        return -1;
+                        return null;
 
 
                     int? DriverID = AccessDriverData.GetDriverID(ApplicationToAdd.ApplicantPersonID);
 
                     if (DriverID == null)
-                        return -1;
+                        return null;
                     if (DriverID == -1)
-                        return -1;
+                        return null;
 
-                    if (AccessLicenseData.DoseHaveActiveLicense((int)DriverID, LicenseClass.RegularCar))
-                        return -1;
+                    if (!AccessLicenseData.DoseHaveActiveLicense((int)DriverID, LicenseClass.RegularCar))
+                        return null;
 
-                    int DoseApplicationSucceeded = _Application(ApplicationToAdd);
+                    Application AddedApplication = _Application(ApplicationToAdd);
 
-                    if (DoseApplicationSucceeded == -1) 
-                        return -1;
+                    if (AddedApplication == null)
+                        return null;
 
                     int? DoseEyeTestSucceeded = null;
 
@@ -711,71 +825,84 @@ namespace BusinessTier
                         DoseEyeTestSucceeded = MangeEyeTests._Add(EyeTestToAdd);
                         if (DoseEyeTestSucceeded == -1)
                         {
-                            AccessApplicationData.DeleteApplication(DoseApplicationSucceeded);
-                            return -1;
+                            AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                            return null;
                         }
                     }
 
                     int DoseLocalApplicationSucceeded = MangeLocalDrivingLicenseApplications._Add(new LocalDrivingLicenseApplication
-                        (DoseApplicationSucceeded, LicenseClass.RegularCar, (DoseEyeTestSucceeded != null) ? DoseEyeTestSucceeded : EyeTestToAdd.TestID, null, null));
+                        (AddedApplication.ApplicationID, LicenseClass.RegularCar, (DoseEyeTestSucceeded != null) ? DoseEyeTestSucceeded : EyeTestToAdd.TestID, null, null, null, null));
 
-                    if(DoseLocalApplicationSucceeded == -1)
+                    if (DoseLocalApplicationSucceeded == -1)
                     {
                         if (DoseEyeTestSucceeded != null)
                             AccessEyeTestData.DeleteEyeTest(EyeTestToAdd.TestID);
-                        AccessApplicationData.DeleteApplication(DoseApplicationSucceeded);
-                        return -1;
+                        AccessApplicationData.DeleteApplication(AddedApplication.ApplicationID);
+                        return null;
                     }
 
-                    return DoseApplicationSucceeded;
+                    return AddedApplication;
                 }
 
             }
 
-            private static bool _IsTheApplicationValidToAttachLicense (int ApplicationID)
+            public static bool IsTheApplicationValidToAttachLicense(int ApplicationID)
             {
-                if (!AccessApplicationData.IsExist(ApplicationID))
-                    return false;
 
-                Application FindedApplication = MangeApplications.Find(ApplicationID);
+                Application FindedApplication =
+                    AccessApplicationData.Find(ApplicationID).ToApplication();
 
-                if (!AccessLocalDrivingLicenseApplicationData.IsExistByApplicationID(ApplicationID))
+                if (FindedApplication == null)
                     return false;
 
                 if (FindedApplication.ApplicationType != ApplicationType.LicenseIssuance)
                     return false;
 
-                if (DateTime.Now.Subtract(FindedApplication.ApplicationDate) > new TimeSpan(SettingsClass.ApplicationExpirationPeriod, 0, 0, 0))
+                if (DateTime.Now.Subtract(FindedApplication.ApplicationDate) > SettingsClass.Application.ApplicationExpirationPeriod)
                     return false;
 
                 if (FindedApplication.ApplicationStatus != ApplicationStatus.Completed)
                     return false;
 
-                LocalDrivingLicenseApplication FindedLocalApplication = MangeLocalDrivingLicenseApplications.FindByApplicationID(ApplicationID);
+
+                LocalDrivingLicenseApplication FindedLocalApplication =
+                    AccessLocalDrivingLicenseApplicationData.FindByApplicationID(ApplicationID).ToLocalDrivingLicenseApplication();
+
+                if (FindedLocalApplication == null)
+                    return false;
 
                 if (FindedLocalApplication.EyeTestID == null || FindedLocalApplication.DrivingTestID == null || FindedLocalApplication.TheoritecalTestID == null)
                     return false;
 
-                if (!MangeEyeTests.IsExist((int)FindedLocalApplication.EyeTestID) || !MangeDrivingTests.IsExist((int)FindedLocalApplication.DrivingTestID) || !MangeTheoreticalTests.IsExist((int)FindedLocalApplication.TheoritecalTestID))
-                    return false;
 
                 EyeTest EyeTest = MangeEyeTests.Find((int)FindedLocalApplication.EyeTestID);
+                if (EyeTest == null)
+                    return false;
+                
+                DrivingTest DrivingTest = MangeDrivingTests.Find((int)FindedLocalApplication.DrivingTestID);
+                if (DrivingTest == null)
+                    return false;
+                
+                TheoreticalTest TheoreticalTest = MangeTheoreticalTests.Find((int)FindedLocalApplication.TheoritecalTestID);
+                if (TheoreticalTest == null)
+                    return false;
+
 
                 if (EyeTest.TestResult != true)
                     return false;
 
-                if (DateTime.Now.Subtract(EyeTest.AppointmentDate) > new TimeSpan(SettingsClass.EyeTestExpirationPeriod, 0, 0, 0))
+                if (DateTime.Now.Subtract(EyeTest.AppointmentDate) > SettingsClass.TestInfos.Eye.EyeTestExpirationPeriod)
                     return false;
 
                 if (EyeTest.PersonID != FindedApplication.ApplicantPersonID)
                     return false;
 
-                DrivingTest DrivingTest = MangeDrivingTests.Find((int)FindedLocalApplication.DrivingTestID);
-                
+
+
                 if (DrivingTest.TestResult != true)
                     return false;
 
-                if (DateTime.Now.Subtract(DrivingTest.AppointmentDate) > new TimeSpan(SettingsClass.DrivingTestExpirationPeriod, 0, 0, 0))
+                if (DateTime.Now.Subtract(DrivingTest.AppointmentDate) > SettingsClass.TestInfos.Driving.ExpirationPeriod)
                     return false;
 
                 if (DrivingTest.PersonID != FindedApplication.ApplicantPersonID)
@@ -784,12 +911,11 @@ namespace BusinessTier
                 if (DrivingTest.TestClass != FindedLocalApplication.LicenseClass)
                     return false;
 
-                TheoreticalTest TheoreticalTest = MangeTheoreticalTests.Find((int)FindedLocalApplication.TheoritecalTestID);
 
                 if (TheoreticalTest.TestResult != true)
                     return false;
 
-                if (DateTime.Now.Subtract(TheoreticalTest.AppointmentDate) > new TimeSpan(SettingsClass.TheoreticalTestExpirationPeriod, 0, 0, 0))
+                if (DateTime.Now.Subtract(TheoreticalTest.AppointmentDate) > SettingsClass.TestInfos.Theoretical.TheoreticalTestExpirationPeriod)
                     return false;
 
                 if (TheoreticalTest.PersonID != FindedApplication.ApplicantPersonID)
@@ -801,60 +927,210 @@ namespace BusinessTier
                 return true;
             }
 
-            public static bool IsTheApplicationValidToAttachLicense(int ApplicationID)
+            public static bool UpdateApplicationFee(int ApplicationIDToUpdate, decimal NewPaiedFee)
             {
-                return _IsTheApplicationValidToAttachLicense(ApplicationID);
-            }
+                if (ApplicationIDToUpdate > -1)
+                    return false;
+                if (NewPaiedFee < 0)
+                    return false;
 
-            // needs to be delete and handeled
-            private static decimal _CalculateTotalApplicationFees(Application ApplicationToCalculatItsFees)
-            {
-                decimal TotalNeededFees = AccessApplicationData.GetApplicationFees(ApplicationToCalculatItsFees.ApplicationType);
+                Application OldApplication = 
+                    AccessApplicationData.Find(ApplicationIDToUpdate).ToApplication();
 
-                switch (ApplicationToCalculatItsFees.ApplicationType)
+                if (OldApplication == null)
+                    return false;
+                if (OldApplication.IsExpired)
+                    return false;
+                if (OldApplication.ApplicationStatus != ApplicationStatus.New)
+                    return false;
+
+
+                decimal? ApplicationCost;
+
+                switch (OldApplication.ApplicationType)
                 {
-                    case ApplicationType.DamagedReplacement:
-                        break;
-                    case ApplicationType.IssuingInternationalLicense:
-                        TotalNeededFees += SettingsClass.GetInternationalLicenseIssuanceFees
-                            ((LicenseClass)AccessInternationalLicenseData.GetInternationalLicenseClassByApplicationID(ApplicationToCalculatItsFees.ApplicationID));
-                        break;
                     case ApplicationType.LicenseIssuance:
+                        
+                        LicenseClass? Class =
+                            AccessLocalDrivingLicenseApplicationData.FindClassByApplicationID(OldApplication.ApplicationID);
+                        
+                        if (Class == null)
+                            return false;
+
+                        ApplicationCost = 
+                            Fees.GetIssuingNewLicenseApplicationTotalFees((LicenseClass)Class);
+
+                        if (NewPaiedFee < OldApplication.PaidFees)
+                        {
+                            if (OldApplication.PaidFees < ApplicationCost)
+                                return false;
+                            if (NewPaiedFee != ApplicationCost)
+                                return false;
+                        }
+
+                        if (NewPaiedFee > ApplicationCost)
+                            return false;
                         break;
-                    case ApplicationType.MissingReplacement:
-                        break;
+
                     case ApplicationType.ReleaseLicense:
+
+                        ApplicationCost = Fees.GetReleaseLicenseApplicationTotalFees
+                            (AccessDetainingLicenseRecordData.FindByApplicationID(ApplicationIDToUpdate).LicenseID);
+
+                        if (ApplicationCost == null)
+                            return false;
+
+                        if (NewPaiedFee < OldApplication.PaidFees)
+                        {
+                            if (OldApplication.PaidFees < ApplicationCost)
+                                return false;
+                            if (NewPaiedFee != ApplicationCost)
+                                return false;
+                        }
+
+                        if (NewPaiedFee > ApplicationCost)
+                            return false;
                         break;
-                    case ApplicationType.RenewDrivingLicense:
+
+                    default:
+                        ApplicationCost = Fees.GetToatlApplicationFees                            
+                            ((ApplicationType)AccessApplicationData.GetApplicationType(ApplicationIDToUpdate));
+
+                        if (ApplicationCost == null)
+                            return false;
+
+                        if (NewPaiedFee < OldApplication.PaidFees)
+                        {
+                            if (OldApplication.PaidFees < ApplicationCost)
+                                return false;
+                            if (NewPaiedFee != ApplicationCost)
+                                return false;
+                        }
+
+                        if (NewPaiedFee > ApplicationCost)
+                            return false;
                         break;
-                    case ApplicationType.RetakeTest:
-                        break;
+
                 }
 
-                return TotalNeededFees;
+                return (bool)AccessApplicationData.UpdateApplicationPaiedFee(ApplicationIDToUpdate, NewPaiedFee);
             }
 
-            public static bool Update(Application ApplicationToUpdate)
+            public static bool CanceleApplication(int ApplicationIDToCancele)
             {
-                // fees LaststatusDate status // 
+                if (ApplicationIDToCancele > -1)
+                    return false;
+
+                Application OregenalApplication =
+                    AccessApplicationData.Find(ApplicationIDToCancele).ToApplication();
+                if (OregenalApplication == null)
+                    return false;
+                if (OregenalApplication.IsExpired)
+                    return false;
+                if (OregenalApplication.ApplicationStatus != ApplicationStatus.New)
+                    return false;                
+
+                return (bool)AccessApplicationData.CanceleApplication(ApplicationIDToCancele);
+            }
+
+            private static bool _CompleteApplication(int ApplicationIDToComplete)
+            {
+                Application ApplicationToComplete = AccessApplicationData.Find(ApplicationIDToComplete).ToApplication();
+
+                if (ApplicationToComplete == null)
+                    return false;
+                if (ApplicationToComplete.IsExpired)
+                    return false;
+                if (ApplicationToComplete.ApplicationStatus != ApplicationStatus.New)
+                    return false;
+
+                switch (ApplicationToComplete.ApplicationType)
+                {
+                    case ApplicationType.LicenseIssuance:
+                        LicenseClass? Class =
+                            AccessLocalDrivingLicenseApplicationData.FindClassByApplicationID(ApplicationToComplete.ApplicationID);
+                        if (Class == null)
+                            return false;
+                        if (ApplicationToComplete.PaidFees != Fees.GetIssuingNewLicenseApplicationTotalFees((LicenseClass)Class))
+                            return false;
+                        break;
+
+                    case ApplicationType.ReleaseLicense:
+                        
+                        decimal? ReleaseApplicationFee = Fees.GetReleaseLicenseApplicationTotalFees
+                            (AccessDetainingLicenseRecordData.FindByApplicationID(ApplicationIDToComplete).LicenseID);
+
+                        if (ReleaseApplicationFee == null)
+                            return false;
+
+                        if (ApplicationToComplete.PaidFees != (decimal)ReleaseApplicationFee) 
+                            return false;
+                        break;
+
+                    default:
+                        if (ApplicationToComplete.PaidFees != Fees.GetToatlApplicationFees((ApplicationType)AccessApplicationData.GetApplicationType(ApplicationIDToComplete)))
+                            return false;
+                        break;
+
+                }
+
+                return AccessApplicationData.CompleteApplication(ApplicationIDToComplete) == true;
+            }
+
+            /*
+                // PaidFees and is the Only thing that can be Updated any way throuw this function //
+            public static bool Update(Application ApplicationToUpdate)
+            {                                  
+                if (ApplicationToUpdate == null)
+                    return false;
                 if (ApplicationToUpdate.ApplicationID == -1)
                     return false;
                 if (!AccessApplicationData.IsExist(ApplicationToUpdate.ApplicationID))
                     return false;
 
-                var OregenalApplication = AccessApplicationData.Find(ApplicationToUpdate.ApplicationID);
 
-                if (OregenalApplication.ApplicationStatus == ApplicationToUpdate.ApplicationStatus)
-                { ApplicationToUpdate.LastStatusDate = OregenalApplication.LastStatusDate; }
-                else if (OregenalApplication.ApplicationStatus == ApplicationStatus.Canceled)
-                { ApplicationToUpdate.ApplicationStatus = ApplicationStatus.Canceled; }
-                else if (OregenalApplication.ApplicationStatus == ApplicationStatus.Completed)
-                { ApplicationToUpdate.ApplicationStatus = ApplicationStatus.Completed; }
+                Application OregenalApplication = AccessApplicationData.Find(ApplicationToUpdate.ApplicationID).ToApplication();
 
-                if (ApplicationToUpdate.PaidFees < _CalculateTotalApplicationFees(ApplicationToUpdate))
+                if (OregenalApplication.IsExpired)
+                    return false;
+                if (OregenalApplication.ApplicationStatus != ApplicationToUpdate.ApplicationStatus)
+                    return false;
+                if (OregenalApplication.ApplicationStatus != ApplicationStatus.New)
                     return false;
 
-                // ApplicationDate and ApplicationType Should not be Edited And it can not be //                
+                if (OregenalApplication.ApplicationStatus == ApplicationStatus.New &&
+                     ApplicationToUpdate.ApplicationStatus == ApplicationStatus.Completed)
+                    return false;
+
+                if (OregenalApplication.ApplicantPersonID != ApplicationToUpdate.ApplicantPersonID ||
+                    OregenalApplication.CreatedByUserID != ApplicationToUpdate.CreatedByUserID ||
+                    OregenalApplication.ApplicationDate != ApplicationToUpdate.ApplicationDate ||
+                    OregenalApplication.ApplicationType != ApplicationToUpdate.ApplicationType)
+                    return false;
+
+                switch (OregenalApplication.ApplicationType)
+                {
+                    case ApplicationType.LicenseIssuance:
+                        LicenseClass? Class =
+                            AccessLocalDrivingLicenseApplicationData.FindClassByApplicationID(OregenalApplication.ApplicationID);
+                        if (Class == null)
+                            return false;
+                        if (ApplicationToUpdate.PaidFees > Fees.GetIssuingNewLicenseApplicationTotalFees((LicenseClass)Class))
+                            return false;
+                        break;
+
+                    case ApplicationType.ReleaseLicense:
+                        if (ApplicationToUpdate.PaidFees > Fees.GetReleaseLicenseApplicationTotalFees
+                            (AccessDetainingLicenseRecordData.FindByApplicationID(OregenalApplication.ApplicationID).LicenseID))
+                            return false;
+                        break;
+
+                    default:
+                        if (ApplicationToUpdate.PaidFees > Fees.GetToatlApplicationFees(ApplicationToUpdate.ApplicationType))
+                            return false;
+                        break;
+
+                }
 
 
 
@@ -862,6 +1138,7 @@ namespace BusinessTier
                     ApplicationToUpdate.ApplicationDate, ApplicationToUpdate.ApplicationType, ApplicationToUpdate.ApplicationStatus,
                     ApplicationToUpdate.LastStatusDate, ApplicationToUpdate.PaidFees, ApplicationToUpdate.CreatedByUserID);
             }
+            */
 
             public static Application Find(int ApplicationID)
             {
@@ -901,44 +1178,20 @@ namespace BusinessTier
                     return null;
 
                 return (DateTime.Now.Subtract((DateTime)ApplicationDate) >
-                            new TimeSpan(SettingsClass.ApplicationExpirationPeriod, 0, 0, 0));
+                           SettingsClass.Application.ApplicationExpirationPeriod);
 
             }
-
 
             public static bool IsExist(int ApplicationIDToFind)
             {
                 return AccessApplicationData.IsExist(ApplicationIDToFind);
             }
-            
+
             /*public static bool DeleteApplication(int ApplicationIDToFind)
             {
                 return AccessApplicationData.DeleteApplication(ApplicationIDToFind);
-            }
+            } You can not just Delete Applications around
             */
-
-            public static bool EditPaidFees(int ApplicationIDToEdit, decimal NewFees)
-            {
-                Application ApplicationToEdit = AccessApplicationData.Find(ApplicationIDToEdit).ToApplication();
-
-                if (ApplicationToEdit == null)
-                    return false;
-
-                if (ApplicationToEdit.ApplicationStatus != ApplicationStatus.New)
-                    return false;
-
-                decimal NeededFee = _CalculateTotalApplicationFees(ApplicationToEdit);
-
-                if (NewFees < NeededFee)
-                    return false;
-
-                return AccessApplicationData.EditPaidFees(ApplicationIDToEdit, NewFees);
-            }
-
-            public static decimal GetApplicationFees(ApplicationType Type)
-            {
-                return AccessApplicationData.GetApplicationFees(Type);
-            }
 
             public static bool CouldCreateAnEyeTest(int ApplicationID)
             {
@@ -964,35 +1217,37 @@ namespace BusinessTier
                 return false;
             }
 
-
         }
 
         public static class MangeCountries
         {
-            public static bool Add(Country CountryToAdd)
+            public static Country Add(Country CountryToAdd)
             {
 
                 if (CountryToAdd.CountryID != -1)
-                { return false; }
+                    return null;
 
                 if (!string.IsNullOrEmpty(CountryToAdd.CountryName))
-                { return false; }
+                    return null;
 
                 else
                 {
-                    DataAccessTier.DTCountry U = AccessCountriesData.AddNewCountry(CountryToAdd.CountryName);
+                    Country U = AccessCountriesData.AddNewCountry(CountryToAdd.CountryName).ToCountry();
 
-                    return U != null;
+                    return U;
                 }
             }
 
             public static bool Update(Country CountryToUpdate)
             {
+                if (CountryToUpdate == null)
+                    return false;
+
                 if (CountryToUpdate.CountryID == -1)
                     return false;
 
                 if (!AccessCountriesData.IsExist(CountryToUpdate.CountryID))
-                { return false; }
+                    return false;
 
                 return AccessCountriesData.UpdateCountry(CountryToUpdate.CountryID, CountryToUpdate.CountryName);
             }
@@ -1019,93 +1274,196 @@ namespace BusinessTier
 
         }
 
-        public static class MangeDetainedLicenses
+        public static class MangeDetainingRecords
         {
-            public static bool Add(DetainedLicense DetainedLicenseToAdd)
+            public static DetainLicenseRecord Add(DetainLicenseRecord DetainedLicenseToAdd)
             {
+                if (DetainedLicenseToAdd == null)
+                    return null;
 
                 if (DetainedLicenseToAdd.DetainID != -1)
-                { return false; }
+                    return null;
 
-                else
-                {
-                    DataAccessTier.DTDetainedLicense U = AccessDetainedLicenseData.AddNewDetainedLicense
+                if (DetainedLicenseToAdd.FineFees < 0)
+                    return null;
+
+                if (null != DetainedLicenseToAdd.ReleasedByUserID ||
+                    null != DetainedLicenseToAdd.ReleaseDate ||
+                    null != DetainedLicenseToAdd.ReleaseApplicationID)
+                    return null;
+
+                if (AccessLicenseData.IsExist(DetainedLicenseToAdd.LicenseID))
+                    return null;
+
+                if (AccessDetainingLicenseRecordData.IsLicenseCurrenlyDetained(DetainedLicenseToAdd.LicenseID))
+                    return null;
+
+
+                DetainedLicenseToAdd.CreatedByUserID = LogedInUser.UserID;
+                DetainedLicenseToAdd.DetainDate = DateTime.Now;
+
+                    DataAccessTier.DTDetainLicenseRecord U = AccessDetainingLicenseRecordData.AddNewDetainedLicense
                         (DetainedLicenseToAdd.LicenseID, DetainedLicenseToAdd.DetainDate, DetainedLicenseToAdd.FineFees, DetainedLicenseToAdd.CreatedByUserID
                         , DetainedLicenseToAdd.ReleaseDate, DetainedLicenseToAdd.ReleasedByUserID, DetainedLicenseToAdd.ReleaseApplicationID);
-
-                    return U != null;
-                }
+                
+                return U == null ? null : U.ToDetainLicenseRecord();
+                
             }
 
-            public static bool Update(DetainedLicense DetainedLicenseToUpdate)
+            public static bool UpdateFineFee(int DetainedRecordIDToUpdate,decimal NewFineFee)
             {
-                if (DetainedLicenseToUpdate.DetainID == -1)
+                if (DetainedRecordIDToUpdate == -1)
                     return false;
 
-                if (!AccessDetainedLicenseData.IsExist(DetainedLicenseToUpdate.DetainID))
-                { return false; }
+                DetainLicenseRecord Record = AccessDetainingLicenseRecordData.Find(DetainedRecordIDToUpdate).ToDetainLicenseRecord();
 
-                return AccessDetainedLicenseData.UpdateDetainedLicense(DetainedLicenseToUpdate.DetainID, DetainedLicenseToUpdate.LicenseID,
-                    DetainedLicenseToUpdate.DetainDate, DetainedLicenseToUpdate.FineFees, DetainedLicenseToUpdate.CreatedByUserID,
-                    DetainedLicenseToUpdate.ReleaseDate, DetainedLicenseToUpdate.ReleasedByUserID, DetainedLicenseToUpdate.ReleaseApplicationID);
+                if (Record == null)
+                    return false;
+
+                if (Record.IsReleased)
+                    return false;
+
+                return AccessDetainingLicenseRecordData.UpdateFineFee(DetainedRecordIDToUpdate, NewFineFee);
             }
 
-            public static DetainedLicense Find(int DetainID)
+            public static bool UpdateLicenseFineFee(int DetainedLicenseID, decimal NewFineFee)
             {
-                var DetainedLicense = AccessDetainedLicenseData.Find(DetainID);
+                if (DetainedLicenseID == -1)
+                    return false;
+
+                DetainLicenseRecord DetainedRecordToUpdate =
+                    AccessDetainingLicenseRecordData.FindLastDetainingOfLicense(DetainedLicenseID).ToDetainLicenseRecord();
+
+                if (DetainedRecordToUpdate == null)
+                    return false;
+
+                return UpdateFineFee(DetainedRecordToUpdate.DetainID, NewFineFee);
+            }
+
+            public static bool ReleaseLicenseWithDetainingRecord(int DetainedRecordID)
+            {
+                if (DetainedRecordID < 0)
+                    return false;
+
+                DetainLicenseRecord RecordToRelease = AccessDetainingLicenseRecordData.Find(DetainedRecordID).ToDetainLicenseRecord();
+
+                if (RecordToRelease == null)
+                    return false;
+
+                // Nothing to update
+                if (RecordToRelease.IsReleased)
+                    return false; 
+
+                // Have Create an application for it first 
+                if (RecordToRelease.ReleaseApplicationID == null)
+                    return false;
+
+                Application ApplicationToReleaseBaisedOn =
+                    AccessApplicationData.Find((int)RecordToRelease.ReleaseApplicationID).ToApplication();
+
+                if (ApplicationToReleaseBaisedOn == null) // It won't be --> just in case
+                    return false;
+
+                if (ApplicationType.ReleaseLicense
+                     != ApplicationToReleaseBaisedOn.ApplicationType) 
+                    return false;   
+
+                if (ApplicationStatus.New !=
+                     ApplicationToReleaseBaisedOn.ApplicationStatus)
+                    return false;
+
+                if (ApplicationToReleaseBaisedOn.PaidFees
+                     != SettingsClass.Application.GetBaseApplicationFees(ApplicationType.ReleaseLicense)
+                     + RecordToRelease.FineFees)
+                    return false;
+
+                if (ApplicationToReleaseBaisedOn.IsExpired)
+                    return false;
+
+                return AccessDetainingLicenseRecordData.ReleaseDetainingRecord(DetainedRecordID, LogedInUser.UserID);
+            }
+
+            public static bool ReleaseLicenseWithID(int DetainedLicenseID)
+            {
+
+                if (DetainedLicenseID == -1)
+                    return false;
+
+                DetainLicenseRecord DetainedRecordToRelease =
+                    AccessDetainingLicenseRecordData.FindLastDetainingOfLicense(DetainedLicenseID).ToDetainLicenseRecord();
+
+                if (DetainedRecordToRelease == null)
+                    return false;
+
+                return ReleaseLicenseWithDetainingRecord(DetainedLicenseID);
+            }
+
+            public static DetainLicenseRecord Find(int DetainID)
+            {
+                var DetainedLicense = AccessDetainingLicenseRecordData.Find(DetainID);
 
                 if (DetainedLicense == null)
                     return null;
                 else
-                    return DetainedLicense.ToDetainedLicense();
+                    return DetainedLicense.ToDetainLicenseRecord();
             }
 
             public static DataTable ListAllDetainedLicenses()
             {
-                return AccessDetainedLicenseData.ListAllDetainingRecords();
+                return AccessDetainingLicenseRecordData.ListAllDetainingRecords();
             }
 
             public static bool IsExist(int DetainIDToFind)
             {
-                return AccessDetainedLicenseData.IsExist(DetainIDToFind);
-            }
-
-            public static bool DeleteDetainedLicense(int DetainIDToFind)
-            {
-                return AccessDetainedLicenseData.DeleteDetainedLicense(DetainIDToFind);
-            }
-
+                return AccessDetainingLicenseRecordData.IsExist(DetainIDToFind);
+            }            
         }
 
         public static class MangeDrivers
         {
-            public static bool Add(Driver DriverToAdd)
+            public static Driver Add(Driver DriverToAdd)
             {
-                DriverToAdd._CreatedDate = DateTime.Now;
-                DriverToAdd._CreatedByUserID = LogedInUser.UserID;
+                if (DriverToAdd == null)
+                    return null;
 
-                if (DriverToAdd.DriverID != -1)
-                { return false; }
+                if (DriverToAdd.DriverID < 0)
+                    return null;
 
-                else
-                {
-                    DataAccessTier.DTDriver U = AccessDriverData.AddNewDriver
-                        (DriverToAdd.PersonID, DriverToAdd.CreatedByUserID, DriverToAdd.CreatedDate);
+                if (DriverToAdd.PersonID < 0)
+                    return null;
 
-                    return U != null;
-                }
+                if (!AccessPersonData.IsExist(DriverToAdd.PersonID))
+                    return null;
+
+                if (AccessDriverData.IsExistByPersonID(DriverToAdd.PersonID))
+                    return null;
+                    
+
+                Driver U = AccessDriverData.AddNewDriver
+                    (DriverToAdd.PersonID, LogedInUser.UserID, DateTime.Now).ToDriver();
+
+                return U;
+
             }
 
-            public static bool Update(Driver DriverToUpdate)
+            public static Driver Add(Driver DriverToAdd, Person PersonToAdd)
             {
-                if (DriverToUpdate.DriverID == -1)
-                    return false;
+                if (DriverToAdd == null || PersonToAdd == null)
+                    return null;
 
-                if (!AccessDriverData.IsExist(DriverToUpdate.DriverID))
-                { return false; }
+                Person AddedPerson = MangePeople._Add(PersonToAdd);
 
-                return AccessDriverData.UpdateDriver(DriverToUpdate.DriverID, DriverToUpdate.PersonID, DriverToUpdate.CreatedByUserID,
-                    DriverToUpdate.CreatedDate);
+                if (AddedPerson == null)
+                    return null;
+                
+                DriverToAdd.PersonID = AddedPerson.PersonID;
+
+                Driver AddedDriver = Add(DriverToAdd);
+
+                if (AddedDriver == null)
+                    AccessPersonData.DeletePerson(AddedPerson.PersonID);
+
+                return AddedDriver;
             }
 
             public static int GetPersonID(int DriverID)
@@ -1123,7 +1481,7 @@ namespace BusinessTier
                 else
                     return Driver.ToDriver();
             }
-            
+
             public static DateTime? GetDriverBirthDate(int DriverID)
             {
                 DateTime? BirthDate = AccessDriverData.GetDriverBirthDate(DriverID);
@@ -1143,7 +1501,7 @@ namespace BusinessTier
                 else
                     return Driver.ToDriver();
             }
-            
+
             public static bool DoesDriverHaveLicenseOfClass(int DriverID, LicenseClass LicenseClass)
             {
                 return AccessDriverData.DoesDriverHaveLicenseOfClass(DriverID, LicenseClass);
@@ -1173,45 +1531,115 @@ namespace BusinessTier
             {
                 return AccessDriverData.GetDriverImagePath(DriverIDToFind);
             }
-
-            public static bool DeleteDriver(int DriverIDToFind)
-            {
-                return AccessDriverData.DeleteDriver(DriverIDToFind);
-            }
-
         }
 
         public static class MangeInternationalLicenses
         {
-            public static bool Add(InternationalLicense InternationalLicenseToAdd)
+            public static InternationalLicense Add(InternationalLicense InternationalLicenseToAdd)
             {
+                if (InternationalLicenseToAdd == null)
+                    return null;
 
                 if (InternationalLicenseToAdd.InternationalLicenseID != -1)
-                { return false; }
+                    return null;
 
-                else
+                Application ApplicationToCreateBasedOn =
+                    AccessApplicationData.Find(InternationalLicenseToAdd.ApplicationID).ToApplication(); 
+
+                if (ApplicationToCreateBasedOn == null)
+                    return null;
+
+                if (ApplicationToCreateBasedOn.ApplicantPersonID
+                     != AccessDriverData.GetDriverPersonID(InternationalLicenseToAdd.DriverID))
+                    return null;
+
+                if (ApplicationType.IssuingInternationalLicense
+                     != ApplicationToCreateBasedOn.ApplicationType)
+                    return null;
+
+                if (ApplicationStatus.New 
+                    != ApplicationToCreateBasedOn.ApplicationStatus)
+                    return null;
+
+                if (ApplicationToCreateBasedOn.IsExpired)
+                    return null;
+
+                if (ApplicationToCreateBasedOn.PaidFees
+                     != MangeApplications.Fees.GetToatlApplicationFees(ApplicationType.IssuingInternationalLicense))
+                    return null;
+
+                License LocalLicnseToCreateBasedOn =
+                    AccessLicenseData.Find(InternationalLicenseToAdd.IssuedUsingLocalLicenseID).ToLicense();
+
+                if (LocalLicnseToCreateBasedOn == null)
+                    return null;
+
+                // If it is detained it won't be active
+                if (!LocalLicnseToCreateBasedOn.IsActive)
+                    return null;
+
+                if (LicenseClass.RegularCar
+                    != LocalLicnseToCreateBasedOn.LicenseClass)
+                    return null;
+
+                if (LocalLicnseToCreateBasedOn.IsExpired)
+                    return null;
+
+                InternationalLicenseToAdd.CreatedByUserID = LogedInUser.UserID;
+                InternationalLicenseToAdd.IssueDate = DateTime.Now;
+                InternationalLicenseToAdd.IsActive = true;
+
+                if (DateTime.Now.Subtract(LocalLicnseToCreateBasedOn.ExpirationDate) 
+                    < SettingsClass.InternationalLicense.InternationalLicenseYears)
+                    
+                    if (SettingsClass.InternationalLicense.AllowInternationalLicenseExpirationDateToByPassLocalOne)
+                        InternationalLicenseToAdd.ExpirationDate =
+                            DateTime.Now + SettingsClass.InternationalLicense.InternationalLicenseYears;
+                    else
+                        InternationalLicenseToAdd.ExpirationDate =
+                            LocalLicnseToCreateBasedOn.ExpirationDate;
+
+
+                int? OldInternationalLicenseID =
+                    AccessInternationalLicenseData.DoesDriverHaveActiveLicense(InternationalLicenseToAdd.InternationalLicenseID);
+
+                InternationalLicense U = AccessInternationalLicenseData.AddNewInternationalLicense
+                    (InternationalLicenseToAdd.ApplicationID, InternationalLicenseToAdd.DriverID,
+                        InternationalLicenseToAdd.IssuedUsingLocalLicenseID, InternationalLicenseToAdd.IssueDate,
+                        InternationalLicenseToAdd.ExpirationDate, InternationalLicenseToAdd.IsActive,
+                        InternationalLicenseToAdd.CreatedByUserID).ToInternationalLicense();
+
+                if (U != null)
                 {
-                    DataAccessTier.DTInternationalLicense U = AccessInternationalLicenseData.AddNewInternationalLicense
-                        (InternationalLicenseToAdd.ApplicationID, InternationalLicenseToAdd.DriverID,
-                            InternationalLicenseToAdd.IssuedUsingLocalLicenseID, InternationalLicenseToAdd.IssueDate,
-                            InternationalLicenseToAdd.ExpirationDate, InternationalLicenseToAdd.IsActive,
-                            InternationalLicenseToAdd.CreatedByUserID);
+                    AccessApplicationData.CompleteApplication(InternationalLicenseToAdd.ApplicationID);
 
-                    return U != null;
+                    if (OldInternationalLicenseID != -1 && OldInternationalLicenseID != null)
+                        AccessInternationalLicenseData.DeactivateLicense((int)OldInternationalLicenseID);
                 }
+
+                return U;
             }
 
-            public static bool Update(InternationalLicense InternationalLicenseToUpdate)
+            public static bool UpdateAcvtiveStatus(int InternationalLicenseIDToUpdate,bool ActiveStatus)
             {
-                if (InternationalLicenseToUpdate.InternationalLicenseID == -1)
+                if (InternationalLicenseIDToUpdate < 0)
                     return false;
 
-                if (!AccessInternationalLicenseData.IsExist(InternationalLicenseToUpdate.InternationalLicenseID))
-                { return false; }
+                if (!AccessInternationalLicenseData.IsExist(InternationalLicenseIDToUpdate))
+                    return false;
+                
+                return AccessInternationalLicenseData.UpdateAcvtiveStatus(InternationalLicenseIDToUpdate,ActiveStatus);
+            }
 
-                return AccessInternationalLicenseData.UpdateInternationalLicense(InternationalLicenseToUpdate.InternationalLicenseID,
-                    InternationalLicenseToUpdate.ApplicationID, InternationalLicenseToUpdate.DriverID, InternationalLicenseToUpdate.IssuedUsingLocalLicenseID,
-                    InternationalLicenseToUpdate.IssueDate, InternationalLicenseToUpdate.ExpirationDate, InternationalLicenseToUpdate.IsActive, InternationalLicenseToUpdate.CreatedByUserID);
+            public static bool UpdateInternationalLicenseExpirationDate(int InternationalLicenseIDToUpdate, DateTime ExpirationDate)
+            {
+                if (InternationalLicenseIDToUpdate < 0)
+                    return false;
+
+                if (!AccessInternationalLicenseData.IsExist(InternationalLicenseIDToUpdate))
+                    return false;
+
+                return AccessInternationalLicenseData.UpdateExpirationDate(InternationalLicenseIDToUpdate, ExpirationDate);
             }
 
             public static InternationalLicense Find(int InternationalLicenseID)
@@ -1244,63 +1672,146 @@ namespace BusinessTier
                 return AccessInternationalLicenseData.IsExist(InternationalLicenseIDToFind);
             }
 
-            public static bool DeleteInternationalLicense(int InternationalLicenseIDToFind)
-            {
-                return AccessInternationalLicenseData.DeleteInternationalLicense(InternationalLicenseIDToFind);
-            }
-
             public static DateTime GetInternationalLicenseExpiretionDate(int LocalLicenseID)
             {
                 return AccessInternationalLicenseData.GetInternationalLicenseExpiretionDate(LocalLicenseID);
             }
 
-            public static LicenseClass GetInternationalLicenseClass(int InternationalLicenseID)
-            {
-                return AccessInternationalLicenseData.GetInternationalLicenseClass(InternationalLicenseID).Value;
-            }
-
-            public static bool SetActivationSatuts(int InternationalLicenseIDToEdit, bool Status)
-            {
-                return AccessInternationalLicenseData.SetActivationSatuts(InternationalLicenseIDToEdit, Status);
-            }
         }
 
         public static class MangeLicenses
         {
-            public static bool Add(License LicenseToAdd)
+            public static License Add(License LicenseToAdd)
             {
+                if (LicenseToAdd == null)
+                    return null;
 
                 if (LicenseToAdd.LicenseID != -1)
-                    return false;
+                    return null;
+
+                Person DriversPersonalInfo = AccessPersonData.FindByDriverID(LicenseToAdd.DriverID).ToPerson();
+
+                if (!SettingsClass.License.IsDriverOledEnough(DriversPersonalInfo.DateOfBirth, LicenseToAdd.LicenseClass))
+                    return null;
 
                 if (AccessDriverData.DoesDriverHaveLicenseOfClass(LicenseToAdd.DriverID, LicenseToAdd.LicenseClass))
-                    return false;
+                    return null;
 
 
-                DateTime? DriverBirthDate = AccessDriverData.GetDriverBirthDate(LicenseToAdd.DriverID);
+                LocalDrivingLicenseApplication LocalApplicationToAddBasedOn = 
+                    AccessLocalDrivingLicenseApplicationData.Find(LicenseToAdd.LocalDrivingLicenseApplicationID).ToLocalDrivingLicenseApplication();
 
-                if (DriverBirthDate == null)
-                    return false;
+                if (LocalApplicationToAddBasedOn == null)
+                    return null;
 
-                if (!SettingsClass.IsDriverOledEnough((DateTime)DriverBirthDate, LicenseToAdd.LicenseClass))
-                    return false;
-
-
-                LicenseToAdd._CreatedByUserID = LogedInUser.UserID;
+                if (LocalApplicationToAddBasedOn.LicenseClass != LicenseToAdd.LicenseClass)
+                    return null;
 
 
-                DataAccessTier.DTLicense U = AccessLicenseData.AddNewLicense
+                if (LocalApplicationToAddBasedOn.EyeTestID == null ||
+                     LocalApplicationToAddBasedOn.DrivingTestID == null ||
+                      LocalApplicationToAddBasedOn.TheoritecalTestID == null ||
+                       string.IsNullOrEmpty(LocalApplicationToAddBasedOn.IdentificationPhotoPath) ||
+                        string.IsNullOrEmpty(LocalApplicationToAddBasedOn.DrivingCourseCertificatePhotoPath))
+                    return null;
+
+
+                Application ApplicationToAddBasedOn = 
+                    AccessApplicationData.Find(LocalApplicationToAddBasedOn.ApplicationID).ToApplication();
+
+                if (ApplicationToAddBasedOn == null)
+                    return null;
+
+                if (ApplicationType.IssuingInternationalLicense
+                     != ApplicationToAddBasedOn.ApplicationType)
+                    return null;
+
+                if (ApplicationStatus.New
+                     != ApplicationToAddBasedOn.ApplicationStatus)
+                    return null;
+
+                if (ApplicationToAddBasedOn.ApplicantPersonID
+                    != DriversPersonalInfo.PersonID)
+                    return null;
+
+                if (ApplicationToAddBasedOn.PaidFees 
+                     != MangeApplications.Fees.GetIssuingNewLicenseApplicationTotalFees(LicenseToAdd.LicenseClass))
+                    return null;
+
+                if (ApplicationToAddBasedOn.IsExpired)
+                    return null;
+
+                // // Tests // //
+
+                EyeTest EyeTest = AccessEyeTestData.Find((int)LocalApplicationToAddBasedOn.EyeTestID).ToEyeTest();
+                DrivingTest DrivingTest = AccessDrivingTestData.Find((int)LocalApplicationToAddBasedOn.DrivingTestID).ToDrivingTest();
+                TheoreticalTest TheoreticalTest = AccessTheoreticalTestData.Find((int)LocalApplicationToAddBasedOn.TheoritecalTestID).ToTheoreticalTest();
+
+
+                if (EyeTest == null ||
+                    DrivingTest == null ||
+                    TheoreticalTest == null)
+                    return null;
+
+
+                    // Eye //
+                if (EyeTest.IsExpired)
+                    return null;
+
+                if (!EyeTest.IsFeesPaied)
+                    return null;
+
+                if (EyeTest.TestResult != true)
+                    return null;
+
+
+                    // Driving //
+                if (DrivingTest.IsExpired)
+                    return null;
+
+                if (!DrivingTest.IsFeesPaied)
+                    return null;
+
+                if (DrivingTest.TestResult != true)
+                    return null;
+
+                if (DrivingTest.TestClass 
+                    != LicenseToAdd.LicenseClass)
+                    return null;
+
+                        // theoretical //
+                if (TheoreticalTest.IsExpired)
+                    return null;
+
+                if (!TheoreticalTest.IsFeesPaied)
+                    return null;
+
+                if (TheoreticalTest.TestResult != true)
+                    return null;
+
+                if (TheoreticalTest.TestClass 
+                    != LicenseToAdd.LicenseClass)
+                    return null;
+
+                    // ID & Course Copies // 
+                if (!GeneralFunctions.IsValidImage(LocalApplicationToAddBasedOn.IdentificationPhotoPath))
+                    return null;
+
+                if (!GeneralFunctions.IsValidImage(LocalApplicationToAddBasedOn.DrivingCourseCertificatePhotoPath))
+                    return null;
+
+                License U = AccessLicenseData.AddNewLicense
                     (LicenseToAdd.LocalDrivingLicenseApplicationID, LicenseToAdd.DriverID,
-                    LicenseToAdd.LicenseClass, LicenseToAdd.IssueDate,
-                    LicenseToAdd.ExpirationDate, LicenseToAdd.Notes,
-                    LicenseToAdd.IsActive, LicenseToAdd.IssueReason,
-                    LicenseToAdd.CreatedByUserID);
+                    LicenseToAdd.LicenseClass, DateTime.Now,
+                    DateTime.Now + SettingsClass.License.HowMuchTimeToExpier(LicenseToAdd.LicenseClass),
+                    LicenseToAdd.Notes,true, LicenseToAdd.IssueReason,
+                    LogedInUser.UserID).ToLicense();
 
-                return U != null;
+                return U;
 
             }
 
-            public static bool Update(License LicenseToUpdate)
+            /*public static bool UpdateMote(License LicenseToUpdate) <every Editable thing can be independently>
             {
                 if (LicenseToUpdate.LicenseID == -1)
                     return false;
@@ -1311,21 +1822,55 @@ namespace BusinessTier
                 DTLicense OldLicense = AccessLicenseData.Find(LicenseToUpdate.LicenseID);
 
                 if (OldLicense.LocalDrivingLicenseApplicationID != LicenseToUpdate.LocalDrivingLicenseApplicationID ||
-                    OldLicense.DriverID != LicenseToUpdate.DriverID ||
-                    OldLicense.LicenseClass != LicenseToUpdate.LicenseClass ||
-                    OldLicense.IssueDate != LicenseToUpdate.IssueDate ||
-                    OldLicense.ExpirationDate != LicenseToUpdate.ExpirationDate ||
-                    OldLicense.IssueReason != LicenseToUpdate.IssueReason ||
-                    OldLicense.IsActive != LicenseToUpdate.IsActive)
+                     OldLicense.DriverID != LicenseToUpdate.DriverID ||
+                      OldLicense.LicenseClass != LicenseToUpdate.LicenseClass ||
+                       OldLicense.IssueDate != LicenseToUpdate.IssueDate ||
+                        OldLicense.ExpirationDate != LicenseToUpdate.ExpirationDate ||
+                         OldLicense.IssueReason != LicenseToUpdate.IssueReason ||
+                          OldLicense.IsActive != LicenseToUpdate.IsActive)
                     return false;
 
-                if(OldLicense.Notes == LicenseToUpdate.Notes )
+                if (OldLicense.Notes == LicenseToUpdate.Notes)
                 { return true; }
-                
+
 
                 return AccessLicenseData.UpdateLicense(LicenseToUpdate.LicenseID, LicenseToUpdate.LocalDrivingLicenseApplicationID, LicenseToUpdate.DriverID,
                     LicenseToUpdate.LicenseClass, LicenseToUpdate.IssueDate, LicenseToUpdate.ExpirationDate, LicenseToUpdate.Notes,
                     LicenseToUpdate.IsActive, LicenseToUpdate.IssueReason, LicenseToUpdate.CreatedByUserID);
+            }
+            */
+            
+            public static bool UpdateAcvtiveStatus(int LicenseIDToUpdate, bool ActiveStatus)
+            {
+                if (LicenseIDToUpdate < 0)
+                    return false;
+
+                if (!AccessLicenseData.IsExist(LicenseIDToUpdate))
+                    return false;
+
+                return AccessLicenseData.UpdateActivationStatus(LicenseIDToUpdate, ActiveStatus);
+            }
+
+            public static bool UpdateNote(int LicenseIDToUpdate, string NewNote)
+            {
+                if (LicenseIDToUpdate < 0)
+                    return false;
+
+                if (!AccessLicenseData.IsExist(LicenseIDToUpdate))
+                    return false;
+
+                return AccessLicenseData.UpdateNote(LicenseIDToUpdate, NewNote);
+            }
+
+            public static bool UpdateExpirationDate(int LicenseIDToUpdate, DateTime NewDate)
+            {
+                if (LicenseIDToUpdate < 0)
+                    return false;
+
+                if (!AccessLicenseData.IsExist(LicenseIDToUpdate))
+                    return false;
+
+                return AccessLicenseData.UpdateExpirationDate(LicenseIDToUpdate, NewDate);
             }
 
             public static License Find(int LicenseID)
@@ -1360,51 +1905,49 @@ namespace BusinessTier
                 return AccessLicenseData.IsExist(LicenseIDToFind);
             }
 
-            public static bool DeleteLicense(int LicenseIDToFind)
-            {
-                return AccessLicenseData.DeleteLicense(LicenseIDToFind);
-            }
-
             public static bool IsCurrentlyDetained(int LicenseIDToCheck)
             {
-                return DataAccessTier.AccessDetainedLicenseData.IsLicenseCurrenlyDetained(LicenseIDToCheck);
+                return DataAccessTier.AccessDetainingLicenseRecordData.IsLicenseCurrenlyDetained(LicenseIDToCheck);
             }
 
+            public static DateTime GetExpirationDateOfLicense(int LicenseID)
+            {
+                return AccessLicenseData.GetExpirationDateOfLicense(LicenseID);
+            }
+       
         }
 
         public static class MangeLocalDrivingLicenseApplications
         {
-            internal static int _Add(LocalDrivingLicenseApplication LocalDrivingLicenseApplicationToAdd)
+            internal static int _Add(LocalDrivingLicenseApplication LocalAppToAdd)
             {
-                Application MainApplication = AccessApplicationData.Find(LocalDrivingLicenseApplicationToAdd.ApplicationID).ToApplication();
+                Application MainApplication = AccessApplicationData.Find(LocalAppToAdd.ApplicationID).ToApplication();
 
                 if (MainApplication == null)
+                    return -1;                
+
+                if (ApplicationStatus.New != MainApplication.ApplicationStatus)
                     return -1;
 
-                if (MainApplication.ApplicationType != ApplicationType.LicenseIssuance)
-                    return -1;
-                
-                if (MainApplication.IsExpired) 
+                if (MainApplication.IsExpired)
                     return -1;
 
-                if (MainApplication.ApplicationStatus != ApplicationStatus.New)
-                    return -1;
-
-                if (LocalDrivingLicenseApplicationToAdd.EyeTestID != null)
+                if (LocalAppToAdd.EyeTestID != null)
                 {
                     EyeTest EyeTest =
-                        AccessEyeTestData.Find((int)LocalDrivingLicenseApplicationToAdd.EyeTestID).ToEyeTest();
+                        AccessEyeTestData.Find((int)LocalAppToAdd.EyeTestID).ToEyeTest();
 
                     if (EyeTest == null)
                         return -1;
-                    
+
                     if (EyeTest.IsExpired)
                         return -1;
                 }
-                if (LocalDrivingLicenseApplicationToAdd.DrivingTestID != null)
+
+                if (LocalAppToAdd.DrivingTestID != null)
                 {
                     DrivingTest DrivingTest =
-                        AccessDrivingTestData.Find((int)LocalDrivingLicenseApplicationToAdd.DrivingTestID).ToDrivingTest();
+                        AccessDrivingTestData.Find((int)LocalAppToAdd.DrivingTestID).ToDrivingTest();
 
                     if (DrivingTest == null)
                         return -1;
@@ -1412,10 +1955,11 @@ namespace BusinessTier
                     if (DrivingTest.IsExpired)
                         return -1;
                 }
-                if (LocalDrivingLicenseApplicationToAdd.TheoritecalTestID != null)
+
+                if (LocalAppToAdd.TheoritecalTestID != null)
                 {
                     TheoreticalTest TheoritecalTest =
-                        AccessTheoreticalTestData.Find((int)LocalDrivingLicenseApplicationToAdd.TheoritecalTestID).ToTheoreticalTest();
+                        AccessTheoreticalTestData.Find((int)LocalAppToAdd.TheoritecalTestID).ToTheoreticalTest();
 
                     if (TheoritecalTest == null)
                         return -1;
@@ -1423,28 +1967,222 @@ namespace BusinessTier
                     if (TheoritecalTest.IsExpired)
                         return -1;
                 }
-                
-                DataAccessTier.DTLocalDrivingLicenseApplication U = AccessLocalDrivingLicenseApplicationData.AddNewLocalDrivingLicenseApplication
-                    (LocalDrivingLicenseApplicationToAdd.ApplicationID, LocalDrivingLicenseApplicationToAdd.LicenseClass,
-                        LocalDrivingLicenseApplicationToAdd.EyeTestID, LocalDrivingLicenseApplicationToAdd.TheoritecalTestID,
-                        LocalDrivingLicenseApplicationToAdd.DrivingTestID);
+
+                LocalDrivingLicenseApplication U = AccessLocalDrivingLicenseApplicationData.AddNew
+                    (LocalAppToAdd.ApplicationID, LocalAppToAdd.LicenseClass,LocalAppToAdd.EyeTestID,
+                      LocalAppToAdd.TheoritecalTestID,LocalAppToAdd.DrivingTestID, LocalAppToAdd.IdentificationPhotoPath,
+                        LocalAppToAdd.DrivingCourseCertificatePhotoPath).ToLocalDrivingLicenseApplication();
 
                 return U == null ? -1 : U.LocalDrivingLicenseApplicationID;
 
             }
 
-            public static bool Update(LocalDrivingLicenseApplication LocalDrivingLicenseApplicationToUpdate)
+            public static bool Update(LocalDrivingLicenseApplication LocalAppToUpdate)
             {
-                if (LocalDrivingLicenseApplicationToUpdate.LocalDrivingLicenseApplicationID == -1)
+                if (LocalAppToUpdate == null)
                     return false;
 
-                if (!AccessLocalDrivingLicenseApplicationData.IsExist(LocalDrivingLicenseApplicationToUpdate.LocalDrivingLicenseApplicationID))
-                { return false; }
+                if (LocalAppToUpdate.LocalDrivingLicenseApplicationID < 0)
+                    return false;
 
+                LocalDrivingLicenseApplication OldLocalApp =
+                    AccessLocalDrivingLicenseApplicationData.Find(LocalAppToUpdate.LocalDrivingLicenseApplicationID).ToLocalDrivingLicenseApplication();
+
+
+            if (OldLocalApp.ApplicationID != LocalAppToUpdate.ApplicationID ||
+                 OldLocalApp.LicenseClass != LocalAppToUpdate.LicenseClass)
+                    return false;
+
+                Application MainApplication = AccessApplicationData.Find(OldLocalApp.ApplicationID).ToApplication();
+
+                if (MainApplication == null)
+                    return false;
+
+                if (ApplicationStatus.New
+                     != MainApplication.ApplicationStatus)
+                    return false;
+
+                if (LocalAppToUpdate.CheckMainApplicationAndNulls(MainApplication.ApplicationType)!= true)
+                    return false;
+
+
+                EyeTest EyeTest = null;
+                DrivingTest DrivingTest = null;
+                TheoreticalTest TheoreticalTest = null;
+
+                if (OldLocalApp.EyeTestID != LocalAppToUpdate.EyeTestID)
+                    if (LocalAppToUpdate.EyeTestID != null)
+                    {
+                        EyeTest OldEyeTest = null;
+                        if (OldLocalApp.EyeTestID != null)
+                        {
+                            OldEyeTest = AccessEyeTestData.Find((int)OldLocalApp.EyeTestID).ToEyeTest();
+
+                            switch (OldEyeTest.TestResult)
+                            {
+                                case false:
+                                    break;
+
+                                case true:
+                                    if (OldEyeTest.IsExpired)
+                                        return false;
+                                    break;
+
+                                default: // null
+                                    if (OldEyeTest.AppointmentDate + SettingsClass.TestInfos.MaximumPeriodToSetTestResulte < DateTime.Now)
+                                        return false;
+                                    break;
+                            }                            
+                        }
+
+                        EyeTest = AccessEyeTestData.Find((int)LocalAppToUpdate.EyeTestID).ToEyeTest();
+
+                        if (EyeTest == null)
+                            return false;
+
+                        if (EyeTest.PersonID != MainApplication.ApplicantPersonID)
+                            return false;
+
+                        switch (EyeTest.TestResult)
+                        {
+                            case false:
+                                return false;
+
+                            case true:
+                                if (!OldEyeTest.IsExpired)
+                                    return false;
+                                break;
+
+                            default: // null
+                                if (OldEyeTest.AppointmentDate + SettingsClass.TestInfos.MaximumPeriodToSetTestResulte > DateTime.Now)
+                                    return false;
+                                break;
+                        }
+                    }
+
+                if (OldLocalApp.DrivingTestID != LocalAppToUpdate.DrivingTestID)
+                    if (LocalAppToUpdate.DrivingTestID != null)
+                    {
+                        DrivingTest OldDrivingTest = null;
+                        
+                        if (OldLocalApp.DrivingTestID != null)
+                        {
+                            OldDrivingTest = AccessDrivingTestData.Find((int)OldLocalApp.DrivingTestID).ToDrivingTest();
+
+                            switch (OldDrivingTest.TestResult)
+                            {
+                                case false:
+                                    break;
+
+                                case true:
+                                    if (!OldDrivingTest.IsExpired)
+                                        return false;
+                                    break;
+
+                                default: // null
+                                    if (OldDrivingTest.AppointmentDate + SettingsClass.TestInfos.MaximumPeriodToSetTestResulte < DateTime.Now)
+                                        return false;
+                                    break;
+                            }
+                        }
+
+                        DrivingTest = AccessDrivingTestData.Find((int)LocalAppToUpdate.DrivingTestID).ToDrivingTest();
+                        
+                        if (DrivingTest == null)
+                            return false;
+
+                        if (DrivingTest.PersonID != MainApplication.ApplicantPersonID)
+                            return false;
+
+                        if (DrivingTest.TestClass != LocalAppToUpdate.LicenseClass)
+                            return false;
+
+                        switch (DrivingTest.TestResult)
+                        {
+                            case false:
+                                return false;
+
+                            case true:
+                                if (OldDrivingTest.IsExpired)
+                                    return false;
+                                break;
+
+                            default: // null
+                                if (OldDrivingTest.AppointmentDate + SettingsClass.TestInfos.MaximumPeriodToSetTestResulte > DateTime.Now)
+                                    return false;
+                                break;
+                        }
+
+
+                    }
+
+                if (OldLocalApp.TheoritecalTestID != LocalAppToUpdate.TheoritecalTestID)
+                    if (LocalAppToUpdate.TheoritecalTestID != null)
+                    {
+                        TheoreticalTest OldTheoreticalTest = null;
+
+                        if (OldLocalApp.TheoritecalTestID != null)
+                        {
+                            OldTheoreticalTest =
+                                AccessTheoreticalTestData.Find((int)OldLocalApp.TheoritecalTestID).ToTheoreticalTest();
+
+                            switch (OldTheoreticalTest.TestResult)
+                            {
+                                case false:
+                                    break;
+
+                                case true:
+                                    if (!OldTheoreticalTest.IsExpired)
+                                        return false;
+                                    break;
+
+                                default: // null
+                                    if (OldTheoreticalTest.AppointmentDate + SettingsClass.TestInfos.MaximumPeriodToSetTestResulte < DateTime.Now)
+                                        return false;
+                                    break;
+                            }
+                        }
+
+                        TheoreticalTest = AccessTheoreticalTestData.Find((int)LocalAppToUpdate.TheoritecalTestID).ToTheoreticalTest();
+
+                        if (TheoreticalTest == null)
+                            return false;
+
+                        if (TheoreticalTest.PersonID != MainApplication.ApplicantPersonID)
+                            return false;
+
+                        if (TheoreticalTest.TestClass != LocalAppToUpdate.LicenseClass)
+                            return false;
+
+
+                        switch (TheoreticalTest.TestResult)
+                        {
+                            case false:
+                                return false;
+
+                            case true:
+                                if (OldTheoreticalTest.IsExpired)
+                                    return false;
+                                break;
+
+                            default: // null
+                                if (OldTheoreticalTest.AppointmentDate + SettingsClass.TestInfos.MaximumPeriodToSetTestResulte > DateTime.Now)
+                                    return false;
+                                break;
+                        }
+                    }
+
+                if (!GeneralFunctions.IsValidImage(LocalAppToUpdate.IdentificationPhotoPath))
+                    return false;
+
+                if (!GeneralFunctions.IsValidImage(LocalAppToUpdate.DrivingCourseCertificatePhotoPath))
+                    return false;
+                
                 return AccessLocalDrivingLicenseApplicationData.UpdateLocalDrivingLicenseApplication
-                    (LocalDrivingLicenseApplicationToUpdate.LocalDrivingLicenseApplicationID, LocalDrivingLicenseApplicationToUpdate.ApplicationID,
-                    LocalDrivingLicenseApplicationToUpdate.LicenseClass, LocalDrivingLicenseApplicationToUpdate.EyeTestID,
-                    LocalDrivingLicenseApplicationToUpdate.TheoritecalTestID, LocalDrivingLicenseApplicationToUpdate.DrivingTestID);
+                    (LocalAppToUpdate.LocalDrivingLicenseApplicationID, LocalAppToUpdate.ApplicationID,
+                      LocalAppToUpdate.LicenseClass, LocalAppToUpdate.EyeTestID,
+                       LocalAppToUpdate.TheoritecalTestID, LocalAppToUpdate.DrivingTestID,
+                        LocalAppToUpdate.IdentificationPhotoPath, LocalAppToUpdate.DrivingCourseCertificatePhotoPath);
             }
 
             public static LocalDrivingLicenseApplication Find(int LocalDrivingLicenseApplicationID)
@@ -1486,26 +2224,56 @@ namespace BusinessTier
             {
                 return AccessLocalDrivingLicenseApplicationData.IsExist(LocalDrivingLicenseApplicationIDToFind);
             }
-            
+
             public static bool IsExistByApplicationID(int ApplicationID)
             {
                 return AccessLocalDrivingLicenseApplicationData.IsExistByApplicationID(ApplicationID);
             }
-
-            public static bool DeleteLocalDrivingLicenseApplication(int LocalDrivingLicenseApplicationIDToFind)
-            {
-                return AccessLocalDrivingLicenseApplicationData.DeleteLocalDrivingLicenseApplication(LocalDrivingLicenseApplicationIDToFind);
-            }
-
-            public static DateTime GetExpirationDateOfLicense(int LicenseID)
-            {
-                return AccessLicenseData.GetExpirationDateOfLicense(LicenseID);
-            }
-
+            
         }
 
         public static class MangeEyeTests
-        {            
+        {
+            public static bool _CouldAttachEyeTestToApplicationID(int ApplicationID)
+            {
+                if (!AccessApplicationData.IsExist(ApplicationID))
+                { return false; }
+
+                ApplicationType Type = (ApplicationType)AccessApplicationData.GetApplicationType(ApplicationID);
+
+                if (Type == ApplicationType.LicenseIssuance)
+                {
+                    if (AccessEyeTestData.IsExistByApplicationID(ApplicationID))
+                        return false;
+
+                    return true;
+                }
+                else if (Type == ApplicationType.RetakeTest)
+                {
+                    if (AccessEyeTestData.IsExistByApplicationID(ApplicationID) ||
+                        AccessTheoreticalTestData.IsExist(ApplicationID) ||
+                        AccessDrivingTestData.IsExist(ApplicationID))
+                        return false;
+                    else
+                        return true;
+                }
+                else if(Type == ApplicationType.RenewDrivingLicense)
+                {
+                    if (!AccessEyeTestData.IsExistByApplicationID(ApplicationID))
+                        return true;
+                    else
+                        return false;
+
+                }
+
+                return false;
+            }
+
+            public static bool CouldAttachEyeTestToApplicationID(int ApplicationID)
+            {
+                return _CouldAttachEyeTestToApplicationID(ApplicationID);
+            }
+
             internal static int _Add(EyeTest EyeTestToAdd)
             {
                 if (EyeTestToAdd == null)
@@ -1521,7 +2289,7 @@ namespace BusinessTier
                     return -1;
 
                 // we can not tack more then the cost of the test //
-                if (EyeTestToAdd.PaidFees > General.SettingsClass.EyeTestFees) 
+                if (EyeTestToAdd.PaidFees > MangeEyeTests.GetTestFee(EyeTestToAdd.AppointmentDate))
                     return -1;
 
                 if (EyeTestToAdd.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0))
@@ -1539,6 +2307,9 @@ namespace BusinessTier
 
             public static bool Update(EyeTest EyeTestToUpdate)
             {
+                if (EyeTestToUpdate == null)
+                    return false;
+
                 if (EyeTestToUpdate.TestID == -1)
                     return false;
 
@@ -1548,36 +2319,120 @@ namespace BusinessTier
                     return false;
 
                 if (OldTest.PersonID != EyeTestToUpdate.PersonID ||
-                    OldTest.TestApplicationID != EyeTestToUpdate.TestApplicationID ||
-                    OldTest.AppointmentMadeByUserID != EyeTestToUpdate.AppointmentMadeByUserID)
+                     OldTest.TestApplicationID != EyeTestToUpdate.TestApplicationID ||
+                      OldTest.AppointmentMadeByUserID != EyeTestToUpdate.AppointmentMadeByUserID)
                     return false;
 
                 if ((EyeTestToUpdate.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0)
-                        || OldTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0))
-                        && OldTest.AppointmentDate != EyeTestToUpdate.AppointmentDate)
+                      || OldTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0))
+                       && OldTest.AppointmentDate != EyeTestToUpdate.AppointmentDate)
                     return false;
 
                 if (OldTest.TestResult != null
                     && EyeTestToUpdate.TestResult != OldTest.TestResult)
                     return false;
 
-                if (EyeTestToUpdate.PaidFees < OldTest.PaidFees)
+                decimal TestFee = MangeEyeTests.GetTestFee(EyeTestToUpdate.AppointmentDate);
+
+                if (OldTest.TestResult != EyeTestToUpdate.TestResult)
+                     EyeTestToUpdate.SetResult((bool)EyeTestToUpdate.TestResult, LogedInUser.UserID);
+
+                if (EyeTestToUpdate.PaidFees > TestFee)
                     return false;
+
+                if (EyeTestToUpdate.PaidFees < OldTest.PaidFees && EyeTestToUpdate.PaidFees < TestFee)
+                    return false;
+
 
                 if (EyeTestToUpdate.TestResult != null
-                    && EyeTestToUpdate.PaidFees < General.SettingsClass.EyeTestFees)
+                     && EyeTestToUpdate.PaidFees < General.SettingsClass.TestInfos.Eye.GetCashedFeeIfInDateRange(DateTime.Now))
                     return false;
 
-                if (EyeTestToUpdate.TestResult != null && EyeTestToUpdate.ResultAddedByUserID == null)
-                    return false;
-
-                if (EyeTestToUpdate.TestResult != null && OldTest.TestResult == null && EyeTestToUpdate.ResultAddedByUserID != LogedInUser.UserID)
+                if (EyeTestToUpdate.ResultAddedByUserID != null && EyeTestToUpdate.PaidFees != TestFee)
                     return false;
 
 
                 return AccessEyeTestData.UpdateEyeTest(EyeTestToUpdate.TestID, EyeTestToUpdate.PersonID,
                     EyeTestToUpdate.AppointmentDate, EyeTestToUpdate.PaidFees, EyeTestToUpdate.AppointmentMadeByUserID
-                    , EyeTestToUpdate.TestApplicationID, EyeTestToUpdate.TestResult, EyeTestToUpdate.Notes, EyeTestToUpdate.ResultAddedByUserID);
+                    , EyeTestToUpdate.TestApplicationID, EyeTestToUpdate.TestResult, EyeTestToUpdate.Notes, EyeTestToUpdate.ResultAddedByUserID,LogedInUser.UserID);
+            }
+
+            public static bool UpdatePaidFees(int EyeTestIDToUpdate, decimal NewPaidFees)
+            {
+                if (EyeTestIDToUpdate < 0)
+                    return false;
+
+                if (NewPaidFees < 0)
+                    return false;
+
+                EyeTest OldEyeTest = AccessEyeTestData.Find(EyeTestIDToUpdate).ToEyeTest();
+
+                if (OldEyeTest == null)
+                    return false;
+
+                if (OldEyeTest.PaidFees == NewPaidFees)
+                    return false;
+
+                if (OldEyeTest.AppointmentDate < DateTime.Now)
+                    return false;
+
+                if (OldEyeTest.PaidFees > NewPaidFees)
+                {
+                    decimal Cost = MangeEyeTests.GetTestFee(OldEyeTest.AppointmentDate);
+
+                    if (OldEyeTest.PaidFees < Cost)
+                        return false;
+                    if (NewPaidFees != Cost)
+                 
+                        return false;
+                }
+
+                return AccessEyeTestData.UpdatePaiedFee(EyeTestIDToUpdate, NewPaidFees);
+            }
+
+            public static bool UpdateAppointmentDate(int EyeTestIDToUpdate, DateTime NewAppointmentDate)
+            {
+                if (EyeTestIDToUpdate < 0)
+                    return false;
+
+                if (NewAppointmentDate < DateTime.Now)
+                    return false;
+
+                EyeTest OldEyeTest = AccessEyeTestData.Find(EyeTestIDToUpdate).ToEyeTest();
+
+                if (OldEyeTest == null)
+                    return false;
+
+                if (OldEyeTest.TestResult != null)
+                    return false;
+
+                if (OldEyeTest.AppointmentDate < DateTime.Now)
+                    return false;
+
+                return AccessEyeTestData.UpdateAppointmentDate(EyeTestIDToUpdate, NewAppointmentDate,LogedInUser.UserID);
+            }
+
+            public static bool UpdateTestResult(int EyeTestIDToUpdate, bool NewResult)
+            {
+                if (EyeTestIDToUpdate < 0)
+                    return false;
+
+                EyeTest OldEyeTest = AccessEyeTestData.Find(EyeTestIDToUpdate).ToEyeTest();
+
+                if (OldEyeTest == null)
+                    return false;
+
+                if (OldEyeTest.TestResult != null)
+                    return false;
+
+                if (OldEyeTest.AppointmentDate > DateTime.Now)
+                    return false;
+
+                if (OldEyeTest.DidTheTestPassWithoutAttending() == true)
+                    return false;
+
+
+                return AccessEyeTestData.UpdateTestResult(EyeTestIDToUpdate, NewResult, LogedInUser.UserID);
             }
 
             public static EyeTest Find(int TestID)
@@ -1599,7 +2454,7 @@ namespace BusinessTier
                 else
                     return EyeTest.ToEyeTest();
             }
-                       
+
             public static DateTime? GetAppointmentDate(int TestID)
             {
                 var EyeTest = AccessEyeTestData.GetAppointmentDate(TestID);
@@ -1618,7 +2473,7 @@ namespace BusinessTier
                     return null;
 
                 return (DateTime.Now.Subtract((DateTime)TestDate) >
-                            new TimeSpan(SettingsClass.EyeTestExpirationPeriod, 0, 0, 0));
+                            SettingsClass.TestInfos.Eye.EyeTestExpirationPeriod);
             }
 
             public static DataTable ListAllEyeTests()
@@ -1640,20 +2495,30 @@ namespace BusinessTier
             {
                 return AccessEyeTestData.IsPassed(TestIDToFind);
             }
-
-
-            public static bool DeleteEyeTest(int TestIDToFind)
+        
+            public static decimal GetTestFee(DateTime TestDate)
             {
-                return AccessEyeTestData.DeleteEyeTest(TestIDToFind);
+                decimal? CashedFee =
+                    SettingsClass.TestInfos.Eye.GetCashedFeeIfInDateRange(TestDate);
+
+                if (CashedFee != null)
+                    return (decimal)CashedFee;
+
+                decimal? Fee = AccessTestsCost.Eye.GetFee(TestDate);
+
+                if (Fee == null) // Will never just in case //
+                    return -1;
+                else
+                    return (decimal)Fee;
             }
         }
 
         public static class MangeDrivingTests
         {
-            public static bool _CouldAttachDrivingTestToApplicationID(int ApplicationID ,LicenseClass TestClass)
+            public static bool _CouldAttachDrivingTestToApplicationID(int ApplicationID, LicenseClass TestClass)
             {
                 if (!AccessApplicationData.IsExist(ApplicationID))
-                { return false; }
+                    return false;
 
                 ApplicationType Type = (ApplicationType)AccessApplicationData.GetApplicationType(ApplicationID);
 
@@ -1661,10 +2526,10 @@ namespace BusinessTier
                 {
                     if (AccessDrivingTestData.IsExistByApplicationID(ApplicationID))
                         return false;
-                    if (AccessLocalDrivingLicenseApplicationData.FindByApplicationID(ApplicationID).LicenseClassID != TestClass)
+                    if (AccessLocalDrivingLicenseApplicationData.FindByApplicationID(ApplicationID).LicenseClass != TestClass)
                         return false;
 
-                        return true;
+                    return true;
                 }
                 else if (Type == ApplicationType.RetakeTest)
                 {
@@ -1683,7 +2548,7 @@ namespace BusinessTier
             }
 
             internal static int _Add(DrivingTest TestToAdd)
-            {                 
+            {
                 if (TestToAdd == null)
                     return -1;
 
@@ -1697,7 +2562,7 @@ namespace BusinessTier
                     return -1;
 
                 // we can not tack more then the cost of the test //
-                if (TestToAdd.PaidFees > General.SettingsClass.DrivingTestFees)
+                if (TestToAdd.PaidFees > MangeDrivingTests.GetTestFee(TestToAdd.AppointmentDate, TestToAdd.TestClass))
                     return -1;
 
                 if (DateTime.Now.Subtract(TestToAdd.AppointmentDate) > new TimeSpan(0, 0, 0, 0))
@@ -1716,6 +2581,9 @@ namespace BusinessTier
 
             public static bool Update(DrivingTest TestToUpdate)
             {
+                if (TestToUpdate == null)
+                    return false;
+
                 if (TestToUpdate.TestID == -1)
                     return false;
 
@@ -1724,40 +2592,117 @@ namespace BusinessTier
                 if (OldTest == null)
                     return false;
 
-
                 if (OldTest.PersonID != TestToUpdate.PersonID ||
                     OldTest.TestApplicationID != TestToUpdate.TestApplicationID ||
+                    OldTest.TestClass != TestToUpdate.TestClass ||
                     OldTest.AppointmentMadeByUserID != TestToUpdate.AppointmentMadeByUserID)
                     return false;
 
                 if (!(TestToUpdate.AppointmentDate.Subtract(DateTime.Now) > new TimeSpan(0, 0, 0)
                         && OldTest.AppointmentDate.Subtract(DateTime.Now) > new TimeSpan(0, 0, 0))
-                        &&  OldTest.AppointmentDate != TestToUpdate.AppointmentDate)
+                        && OldTest.AppointmentDate != TestToUpdate.AppointmentDate)
                     return false;
 
-                if(OldTest.TestClass != TestToUpdate.TestClass && OldTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0))
-                    return false;
-                
                 if (OldTest.TestResult != null
-                    && TestToUpdate.TestResult != OldTest.TestResult)
+                     && TestToUpdate.TestResult != OldTest.TestResult)
                     return false;
 
-                if (TestToUpdate.PaidFees < OldTest.PaidFees)
+                if (OldTest.TestResult != TestToUpdate.TestResult)
+                    TestToUpdate.SetResult((bool)TestToUpdate.TestResult, LogedInUser.UserID);
+
+                decimal TestFees = MangeDrivingTests.GetTestFee(TestToUpdate.AppointmentDate, TestToUpdate.TestClass);
+
+                if (TestToUpdate.PaidFees > TestFees)
+                    return false;
+
+                if (TestToUpdate.PaidFees < OldTest.PaidFees && TestToUpdate.PaidFees < TestFees)
                     return false;
 
                 if (TestToUpdate.TestResult != null
-                    && TestToUpdate.PaidFees < General.SettingsClass.DrivingTestFees)
-                    return false;
-
-                if (TestToUpdate.TestResult != null && TestToUpdate.ResultAddedByUserID == null)
-                    return false;
-
-                if (TestToUpdate.TestResult != null && OldTest.TestResult == null && TestToUpdate.ResultAddedByUserID != LogedInUser.UserID)
+                    && TestToUpdate.PaidFees != TestFees)
                     return false;
 
                 return AccessDrivingTestData.UpdateTest(TestToUpdate.TestID, TestToUpdate.PersonID,
                     TestToUpdate.AppointmentDate, TestToUpdate.PaidFees, TestToUpdate.AppointmentMadeByUserID, TestToUpdate.TestApplicationID,
-                    TestToUpdate.TestResult, TestToUpdate.Notes, TestToUpdate.ResultAddedByUserID, TestToUpdate.TestClass);
+                    TestToUpdate.TestResult, TestToUpdate.Notes, TestToUpdate.ResultAddedByUserID, TestToUpdate.TestClass, LogedInUser.UserID);
+            }
+
+            public static bool UpdatePaidFees(int TestIDToUpdate, decimal NewPaidFees)
+            {
+                if (TestIDToUpdate < 0)
+                    return false;
+
+                if (NewPaidFees < 0)
+                    return false;
+
+                DrivingTest OldTest = AccessDrivingTestData.Find(TestIDToUpdate).ToDrivingTest();
+
+                if (OldTest == null)
+                    return false;
+
+                if (OldTest.PaidFees == NewPaidFees)
+                    return false;
+
+                if (OldTest.AppointmentDate < DateTime.Now)
+                    return false;
+
+                if (OldTest.PaidFees > NewPaidFees)
+                {
+                    decimal Cost = MangeDrivingTests.GetTestFee(OldTest.AppointmentDate,OldTest.TestClass);
+
+                    if (OldTest.PaidFees < Cost)
+                        return false;
+                    if (NewPaidFees != Cost)
+
+                        return false;
+                }
+
+                return AccessDrivingTestData.UpdatePaiedFee(TestIDToUpdate, NewPaidFees);
+            }
+
+            public static bool UpdateAppointmentDate(int TestIDToUpdate, DateTime NewAppointmentDate)
+            {
+                if (TestIDToUpdate < 0)
+                    return false;
+
+                if (NewAppointmentDate < DateTime.Now)
+                    return false;
+
+                DrivingTest OldTest = AccessDrivingTestData.Find(TestIDToUpdate).ToDrivingTest();
+
+                if (OldTest == null)
+                    return false;
+
+                if (OldTest.TestResult != null)
+                    return false;
+
+                if (OldTest.AppointmentDate < DateTime.Now)
+                    return false;
+
+                return AccessDrivingTestData.UpdateAppointmentDate(TestIDToUpdate, NewAppointmentDate, LogedInUser.UserID);
+            }
+
+            public static bool UpdateTestResult(int TestIDToUpdate, bool NewResult)
+            {
+                if (TestIDToUpdate < 0)
+                    return false;
+
+                DrivingTest OldTest = AccessDrivingTestData.Find(TestIDToUpdate).ToDrivingTest();
+
+                if (OldTest == null)
+                    return false;
+
+                if (OldTest.TestResult != null)
+                    return false;
+
+                if (OldTest.AppointmentDate > DateTime.Now)
+                    return false;
+
+                if (OldTest.DidTheTestPassWithoutAttending() == true)
+                    return false;
+
+
+                return AccessDrivingTestData.UpdateTestResult(TestIDToUpdate, NewResult, LogedInUser.UserID);
             }
 
             public static DrivingTest Find(int TestID)
@@ -1769,7 +2714,7 @@ namespace BusinessTier
                 else
                     return TestData.ToDrivingTest();
             }
- 
+
             public static DrivingTest FindByApplicationID(int TestID)
             {
                 var TestData = AccessDrivingTestData.FindByApplicationID(TestID);
@@ -1779,7 +2724,7 @@ namespace BusinessTier
                 else
                     return TestData.ToDrivingTest();
             }
-            
+
             public static DateTime? GetAppointmentDate(int TestID)
             {
                 var TestData = AccessDrivingTestData.GetAppointmentDate(TestID);
@@ -1798,7 +2743,7 @@ namespace BusinessTier
                     return null;
 
                 return (DateTime.Now.Subtract((DateTime)TestDate) >
-                            new TimeSpan(SettingsClass.DrivingTestExpirationPeriod, 0, 0, 0));
+                            SettingsClass.TestInfos.Driving.ExpirationPeriod);
             }
 
             public static DataTable ListAllTests()
@@ -1831,6 +2776,21 @@ namespace BusinessTier
                 return AccessDrivingTestData.DeleteTest(TestIDToFind);
             }
 
+            public static decimal GetTestFee(DateTime TestDate, LicenseClass Class)
+            {
+                decimal? CashedFee =
+                    SettingsClass.TestInfos.Driving.GetCashedFeeIfInDateRange(TestDate, Class);
+
+                if (CashedFee != null) 
+                    return (decimal)CashedFee;
+
+                decimal? Fee = AccessTestsCost.Driving.GetFee(TestDate, Class);
+
+                if (Fee == null) // will never just in case 
+                    return -1;
+                else
+                    return (decimal)Fee;
+            }
         }
 
         public static class MangeTheoreticalTests
@@ -1846,14 +2806,16 @@ namespace BusinessTier
                 {
                     if (AccessTheoreticalTestData.IsExistByApplicationID(ApplicationID))
                         return false;
-                    if (AccessLocalDrivingLicenseApplicationData.FindByApplicationID(ApplicationID).LicenseClassID != TestClass)
+                    if (AccessTheoreticalTestData.FindByApplicationID(ApplicationID).TestClass != TestClass)
                         return false;
 
-                        return true;
+                    return true;
                 }
                 else if (Type == ApplicationType.RetakeTest)
                 {
-                    if (AccessEyeTestData.IsExistByApplicationID(ApplicationID) || AccessDrivingTestData.IsExist(ApplicationID) || AccessTheoreticalTestData.IsExist(ApplicationID))
+                    if (AccessEyeTestData.IsExistByApplicationID(ApplicationID) ||
+                        AccessTheoreticalTestData.IsExist(ApplicationID) ||
+                        AccessDrivingTestData.IsExist(ApplicationID))
                         return false;
                     else
                         return true;
@@ -1882,7 +2844,8 @@ namespace BusinessTier
                     return -1;
 
                 // we can not tack more then the cost of the test //
-                if (TestToAdd.PaidFees > General.SettingsClass.TheoreticalTestFees)
+                if (TestToAdd.PaidFees >
+                     General.SettingsClass.TestInfos.Theoretical.GetCashedFeeIfInDateRange(TestToAdd.AppointmentDate,TestToAdd.TestClass))
                     return -1;
 
                 if (DateTime.Now.Subtract(TestToAdd.AppointmentDate) > new TimeSpan(0, 0, 0, 0))
@@ -1890,7 +2853,7 @@ namespace BusinessTier
 
                 if (TestToAdd.PersonID != AccessApplicationData.GetPersonID(TestToAdd.TestApplicationID))
                     return -1;
-                
+
                 DataAccessTier.DTTheoreticalTest U = AccessTheoreticalTestData.AddNewTest
                     (TestToAdd.PersonID, TestToAdd.AppointmentDate, TestToAdd.PaidFees,
                         LogedInUser.UserID, TestToAdd.TestApplicationID, TestToAdd.TestResult,
@@ -1902,6 +2865,9 @@ namespace BusinessTier
 
             public static bool Update(TheoreticalTest TestToUpdate)
             {
+                if (TestToUpdate == null)
+                    return false;
+
                 if (TestToUpdate.TestID == -1)
                     return false;
 
@@ -1911,8 +2877,9 @@ namespace BusinessTier
                     return false;
 
                 if (OldTest.PersonID != TestToUpdate.PersonID ||
-                    OldTest.TestApplicationID != TestToUpdate.TestApplicationID ||
-                    OldTest.AppointmentMadeByUserID != TestToUpdate.AppointmentMadeByUserID)
+                     OldTest.TestClass != TestToUpdate.TestClass ||
+                      OldTest.TestApplicationID != TestToUpdate.TestApplicationID ||
+                       OldTest.AppointmentMadeByUserID != TestToUpdate.AppointmentMadeByUserID)
                     return false;
 
                 if (!(TestToUpdate.AppointmentDate.Subtract(DateTime.Now) > new TimeSpan(0, 0, 0)
@@ -1920,29 +2887,107 @@ namespace BusinessTier
                          && OldTest.AppointmentDate != TestToUpdate.AppointmentDate)
                     return false;
 
-                if (OldTest.TestClass != TestToUpdate.TestClass && OldTest.AppointmentDate.Subtract(DateTime.Now) < new TimeSpan(0, 0, 0))
-                    return false;
-
                 if (OldTest.TestResult != null
-                    && TestToUpdate.TestResult != OldTest.TestResult)
+                     && TestToUpdate.TestResult != OldTest.TestResult)
                     return false;
 
-                if (TestToUpdate.PaidFees < OldTest.PaidFees)
+                decimal TestFee = MangeTheoreticalTests.GetTestFee
+                    (TestToUpdate.AppointmentDate, TestToUpdate.TestClass);
+
+                if (TestToUpdate.PaidFees > TestFee)
+                    return false;
+               
+                if (TestToUpdate.PaidFees < OldTest.PaidFees && TestToUpdate.PaidFees < TestFee)
                     return false;
 
                 if (TestToUpdate.TestResult != null
-                    && TestToUpdate.PaidFees < General.SettingsClass.TheoreticalTestFees)
+                     && TestToUpdate.PaidFees != TestFee)
                     return false;
 
-                if (TestToUpdate.TestResult != null && TestToUpdate.ResultAddedByUserID == null)
-                    return false;
-
-                if (TestToUpdate.TestResult != null && OldTest.TestResult == null && TestToUpdate.ResultAddedByUserID != LogedInUser.UserID)
-                    return false;
+                if (TestToUpdate.TestResult != OldTest.TestResult)
+                    TestToUpdate.SetResult((bool)TestToUpdate.TestResult, LogedInUser.UserID);
 
                 return AccessTheoreticalTestData.UpdateTest(TestToUpdate.TestID, TestToUpdate.PersonID,
                     TestToUpdate.AppointmentDate, TestToUpdate.PaidFees, TestToUpdate.AppointmentMadeByUserID, TestToUpdate.TestApplicationID,
-                    TestToUpdate.TestResult, TestToUpdate.Notes, TestToUpdate.ResultAddedByUserID, TestToUpdate.TestClass);
+                    TestToUpdate.TestResult, TestToUpdate.Notes, TestToUpdate.ResultAddedByUserID, TestToUpdate.TestClass,LogedInUser.UserID);
+            }
+
+            public static bool UpdatePaidFees(int TestIDToUpdate, decimal NewPaidFees)
+            {
+                if (TestIDToUpdate < 0)
+                    return false;
+
+                if (NewPaidFees < 0)
+                    return false;
+
+                TheoreticalTest OldTest = AccessTheoreticalTestData.Find(TestIDToUpdate).ToTheoreticalTest();
+
+                if (OldTest == null)
+                    return false;
+
+                if (OldTest.PaidFees == NewPaidFees)
+                    return false;
+
+                if (OldTest.AppointmentDate < DateTime.Now)
+                    return false;
+
+                if (OldTest.PaidFees > NewPaidFees)
+                {
+                    decimal Cost = MangeTheoreticalTests.GetTestFee(OldTest.AppointmentDate, OldTest.TestClass);
+
+                    if (OldTest.PaidFees < Cost)
+                        return false;
+                    if (NewPaidFees != Cost)
+
+                        return false;
+                }
+
+                return AccessTheoreticalTestData.UpdatePaiedFee(TestIDToUpdate, NewPaidFees);
+            }
+
+            public static bool UpdateAppointmentDate(int TestIDToUpdate, DateTime NewAppointmentDate)
+            {
+                if (TestIDToUpdate < 0)
+                    return false;
+
+                if (NewAppointmentDate < DateTime.Now)
+                    return false;
+
+                TheoreticalTest OldTest = AccessTheoreticalTestData.Find(TestIDToUpdate).ToTheoreticalTest();
+
+                if (OldTest == null)
+                    return false;
+
+                if (OldTest.TestResult != null)
+                    return false;
+
+                if (OldTest.AppointmentDate < DateTime.Now)
+                    return false;
+
+                return AccessTheoreticalTestData.UpdateAppointmentDate(TestIDToUpdate, NewAppointmentDate, LogedInUser.UserID);
+            }
+
+            public static bool UpdateTestResult(int TestIDToUpdate, bool NewResult)
+            {
+                if (TestIDToUpdate < 0)
+                    return false;
+
+                TheoreticalTest OldTest = AccessTheoreticalTestData.Find(TestIDToUpdate).ToTheoreticalTest();
+
+                if (OldTest == null)
+                    return false;
+
+                if (OldTest.TestResult != null)
+                    return false;
+
+                if (OldTest.AppointmentDate > DateTime.Now)
+                    return false;
+
+                if (OldTest.DidTheTestPassWithoutAttending() == true)
+                    return false;
+
+
+                return AccessTheoreticalTestData.UpdateTestResult(TestIDToUpdate, NewResult, LogedInUser.UserID);
             }
 
             public static TheoreticalTest Find(int TestID)
@@ -1954,7 +2999,7 @@ namespace BusinessTier
                 else
                     return TestData.ToTheoreticalTest();
             }
-            
+
             public static TheoreticalTest FindByApplicationID(int TestID)
             {
                 var TestData = AccessTheoreticalTestData.FindByApplicationID(TestID);
@@ -1977,15 +3022,14 @@ namespace BusinessTier
 
             public static bool? IsExpired(int TestID)
             {
-                DateTime? TestDate = GetAppointmentDate(TestID);
+                TheoreticalTest TestDate = AccessTheoreticalTestData.Find(TestID).ToTheoreticalTest();
 
                 if (TestDate == null)
                     return null;
 
-                return (DateTime.Now.Subtract((DateTime)TestDate) >
-                            new TimeSpan(SettingsClass.TheoreticalTestExpirationPeriod, 0, 0, 0))
+                return (DateTime.Now.Subtract(TestDate.AppointmentDate) >
+                            SettingsClass.TestInfos.Theoretical.TheoreticalTestExpirationPeriod);
             }
-
 
             public static DataTable ListAllTests()
             {
@@ -2002,7 +3046,7 @@ namespace BusinessTier
             {
                 return AccessTheoreticalTestData.IsExist(TestIDToFind);
             }
-            
+
             public static bool IsExistByApplicationID(int TestApplicationIDToFind)
             {
                 return AccessTheoreticalTestData.IsExistByApplicationID(TestApplicationIDToFind);
@@ -2018,12 +3062,27 @@ namespace BusinessTier
                 return AccessTheoreticalTestData.DeleteTest(TestIDToFind);
             }
 
+            public static decimal GetTestFee(DateTime TestDate, LicenseClass Class)
+            {
+                decimal? CashedFee =
+                    SettingsClass.TestInfos.Theoretical.GetCashedFeeIfInDateRange(TestDate, Class);
+
+                if (CashedFee != null)
+                    return (decimal)CashedFee;
+
+                decimal? Fee = AccessTestsCost.Theoretical.GetFee(TestDate, Class);
+
+                if (Fee == null) // will never --> just in case
+                    return -1;
+                else
+                    return (decimal)Fee;
+            }
         }
 
         // the complaxe Function will be out here. //
 
-
-        public static bool EditLocalLicenseApplication(Application ApplicationToEdit, LocalDrivingLicenseApplication LocalLicenseApplication)
+        // this funtion needs to be fucking deleted and handeled //
+        /*public static bool EditLocalLicenseApplication(Application ApplicationToEdit, LocalDrivingLicenseApplication LocalLicenseApplication)
         {
             if (!MangeApplications.IsExist(ApplicationToEdit.ApplicationID))
                 return false;
@@ -2035,7 +3094,7 @@ namespace BusinessTier
 
             if (ApplicationToEdit.ApplicationID != LocalLicenseApplication.ApplicationID)
                 return false;
-            
+
             Application OldAppliction = MangeApplications.Find(ApplicationToEdit.ApplicationID);
 
             if (OldAppliction.ApplicantPersonID != ApplicationToEdit.ApplicantPersonID ||
@@ -2097,22 +3156,27 @@ namespace BusinessTier
                 ApplicationToEdit.PaidFees, ApplicationToEdit.CreatedByUserID))
                 return false;
 
-            if(!AccessLocalDrivingLicenseApplicationData.UpdateLocalDrivingLicenseApplication(LocalLicenseApplication.LocalDrivingLicenseApplicationID, LocalLicenseApplication.ApplicationID, LocalLicenseApplication.LicenseClass, LocalLicenseApplication.EyeTestID, LocalLicenseApplication.TheoritecalTestID, LocalLicenseApplication.DrivingTestID))
+            if (!AccessLocalDrivingLicenseApplicationData.UpdateLocalDrivingLicenseApplication(LocalLicenseApplication.LocalDrivingLicenseApplicationID, LocalLicenseApplication.ApplicationID, LocalLicenseApplication.LicenseClass, LocalLicenseApplication.EyeTestID, LocalLicenseApplication.TheoritecalTestID, LocalLicenseApplication.DrivingTestID))
             {
                 AccessApplicationData.UpdateApplication(OldAppliction.ApplicationID, OldAppliction.ApplicantPersonID, OldAppliction.ApplicationDate,
-                OldAppliction.ApplicationType, OldAppliction.ApplicationStatus,OldAppliction.LastStatusDate,
+                OldAppliction.ApplicationType, OldAppliction.ApplicationStatus, OldAppliction.LastStatusDate,
                 OldAppliction.PaidFees, OldAppliction.CreatedByUserID);
 
                 return false;
             }
 
-                return true;
+            return true;
         }
-
+        */
     }
 
-    // // // // // // Final Structures // // // // //
+}
 
+
+// // Structures and Casting Extentions // //
+namespace BusinessTier
+{
+    // // // // // // Final Structures // // // // //
     public class Country
     {
         internal Country(int CountryID, string CountryName)
@@ -2133,9 +3197,9 @@ namespace BusinessTier
 
     }
 
-    public class DetainedLicense
+    public class DetainLicenseRecord
     {
-        internal DetainedLicense(int DetainID, int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID,
+        internal DetainLicenseRecord(int DetainID, int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID,
              DateTime? ReleaseDate, int? ReleasedByUserID, int? ReleaseApplicationID)
         {
             this._DetainID = DetainID;
@@ -2148,7 +3212,7 @@ namespace BusinessTier
             this._ReleaseApplicationID = ReleaseApplicationID;
         }
 
-        public DetainedLicense(int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID)
+        public DetainLicenseRecord(int LicenseID, DateTime DetainDate, decimal FineFees, int CreatedByUserID)
         {
             this._DetainID = -1;
             this.LicenseID = LicenseID;
@@ -2157,11 +3221,10 @@ namespace BusinessTier
             this.CreatedByUserID = CreatedByUserID;
         }
 
-        public void SetReleaseInfo(DateTime ReleaseDate, int ReleasedByUserID, int ReleaseApplicationID)
+        public void Release(DateTime ReleaseDate, int ReleasedByUserID)
         {
             this._ReleaseDate = ReleaseDate;
             this._ReleasedByUserID = ReleasedByUserID;
-            this._ReleaseApplicationID = ReleaseApplicationID;
         }
 
         private int _DetainID;
@@ -2178,6 +3241,19 @@ namespace BusinessTier
         public DateTime? ReleaseDate { get { return _ReleaseDate; } }
         public int? ReleasedByUserID { get { return _ReleasedByUserID; } }
         public int? ReleaseApplicationID { get { return _ReleaseApplicationID; } }
+
+        public bool IsReleased
+        {
+            get
+            {
+                if (ReleasedByUserID == null && ReleaseDate == null)
+                    return true;
+                else
+                    return false;
+            }
+        }
+
+
     }
 
     public class Application
@@ -2225,7 +3301,7 @@ namespace BusinessTier
         public DateTime LastStatusDate; //
         public decimal PaidFees;
 
-        public bool IsExpired { get { return (DateTime.Now.Subtract(ApplicationDate) > new TimeSpan(SettingsClass.ApplicationExpirationPeriod, 0, 0, 0)); } }
+        public bool IsExpired { get { return (DateTime.Now.Subtract(ApplicationDate) > SettingsClass.Application.ApplicationExpirationPeriod); } }
     }
 
     public class User
@@ -2429,11 +3505,13 @@ namespace BusinessTier
             this.IssueReason = IssueReason;
         }
 
-        public bool IsExpired()
+        public bool IsExpired
         {
-            return DateTime.Now.Subtract(ExpirationDate) < new TimeSpan(0, 0, 0, 0);
+            get
+            {
+                return DateTime.Now.Subtract(ExpirationDate) < new TimeSpan(0, 0, 0, 0);
+            }
         }
-
         private int _LicenseID;
         public int LicenseID { get { return _LicenseID; } }
 
@@ -2454,7 +3532,8 @@ namespace BusinessTier
     public class LocalDrivingLicenseApplication
     {
         internal LocalDrivingLicenseApplication(int LocalDrivingLicenseApplicationID, int ApplicationID,
-            LicenseClass LicenseClass, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
+            LicenseClass LicenseClass, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID,
+            string IdentificationPhotoPath, string DrivingCourseCertificatePhotoPath)
         {
             this._LocalDrivingLicenseApplicationID = LocalDrivingLicenseApplicationID;
             this.ApplicationID = ApplicationID;
@@ -2462,10 +3541,13 @@ namespace BusinessTier
             this.EyeTestID = EyeTestID;
             this.DrivingTestID = DrivingTestID;
             this.TheoritecalTestID = TheoritecalTestID;
+            this.IdentificationPhotoPath = IdentificationPhotoPath;
+            this.DrivingCourseCertificatePhotoPath = DrivingCourseCertificatePhotoPath;
         }
 
         public LocalDrivingLicenseApplication(int ApplicationID,
-            LicenseClass LicenseClass, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
+            LicenseClass LicenseClass, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID,
+            string IdentificationPhotoPath, string DrivingCourseCertificatePhotoPath)
         {
             this._LocalDrivingLicenseApplicationID = -1;
             this.ApplicationID = ApplicationID;
@@ -2473,7 +3555,8 @@ namespace BusinessTier
             this.EyeTestID = EyeTestID;
             this.DrivingTestID = DrivingTestID;
             this.TheoritecalTestID = TheoritecalTestID;
-
+            this.IdentificationPhotoPath = IdentificationPhotoPath;
+            this.DrivingCourseCertificatePhotoPath = DrivingCourseCertificatePhotoPath;
         }
 
         private int _LocalDrivingLicenseApplicationID;
@@ -2485,6 +3568,64 @@ namespace BusinessTier
         public int? EyeTestID;
         public int? DrivingTestID;
         public int? TheoritecalTestID;
+        public string IdentificationPhotoPath;
+        public string DrivingCourseCertificatePhotoPath;
+
+        public bool? CheckMainApplicationAndNulls(ApplicationType? Type = null)
+        {
+            ApplicationType TypeToCheck;
+
+            if (Type == null)
+            {
+                ApplicationType? TempType;
+                TempType = AccessApplicationData.GetApplicationType(ApplicationID);
+
+                if (TempType == null)
+                    return null;
+                else
+                    TypeToCheck = (ApplicationType)TempType;
+            }
+            else
+                TypeToCheck = (ApplicationType)Type;
+
+            switch (TypeToCheck)
+            {
+                case ApplicationType.LicenseIssuance:
+                    break;
+
+                case ApplicationType.RenewDrivingLicense:
+                    if (DrivingTestID != null ||
+                         TheoritecalTestID != null ||
+                          !string.IsNullOrEmpty(IdentificationPhotoPath) ||
+                           !string.IsNullOrEmpty(DrivingCourseCertificatePhotoPath))
+                        return false;
+                    break;
+
+                case ApplicationType.DamagedReplacement:
+                    if (EyeTestID != null ||
+                         DrivingTestID != null ||
+                          TheoritecalTestID != null ||
+                           !string.IsNullOrEmpty(IdentificationPhotoPath) ||
+                            !string.IsNullOrEmpty(DrivingCourseCertificatePhotoPath))
+                        return false;
+                    break;
+
+                case ApplicationType.MissingReplacement:
+                    if (EyeTestID != null ||
+                         DrivingTestID != null ||
+                          TheoritecalTestID != null ||
+                           !string.IsNullOrEmpty(IdentificationPhotoPath) ||
+                            !string.IsNullOrEmpty(DrivingCourseCertificatePhotoPath))
+                        return false;
+
+                    break;
+                default:
+                    return false;
+            }
+
+            return true;
+        }
+
     }
 
     public class Test
@@ -2502,7 +3643,7 @@ namespace BusinessTier
         {
             if (TestResult != null)
                 return false;
-            else if (DateTime.Now.Subtract(AppointmentDate) < new TimeSpan(SettingsClass.MaximumPeriodToSetTestResulte, 0, 0, 0))
+            else if (DateTime.Now.Subtract(AppointmentDate) < SettingsClass.TestInfos.MaximumPeriodToSetTestResulte)
                 return true;
             else if (DateTime.Now.Subtract(AppointmentDate) < new TimeSpan(0, 0, 0))
                 return null;
@@ -2577,14 +3718,29 @@ namespace BusinessTier
             this._ResultAddedByUserID = null;
         }
 
-        public bool IsExpired { get { return DateTime.Now.Subtract((DateTime)AppointmentDate) >
-                            new TimeSpan(SettingsClass.EyeTestExpirationPeriod, 0, 0, 0); } }
+        public bool IsExpired 
+        {
+            get 
+            {
+                return DateTime.Now.Subtract((DateTime)AppointmentDate) >
+                                    SettingsClass.TestInfos.Eye.EyeTestExpirationPeriod; 
+            } 
+        }
+
+        public bool IsFeesPaied
+        {
+            get
+            {
+                return DVLDApp.MangeEyeTests.GetTestFee(AppointmentDate) != PaidFees;
+            }
+        }
+
     }
 
     public class DrivingTest : Test
     {
         internal DrivingTest(int TestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int CreatedByUserID
-            , int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID,LicenseClass TestClass)
+            , int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID, LicenseClass TestClass)
         {
             this._TestID = TestID;
             this._PersonID = PersonID;
@@ -2630,12 +3786,20 @@ namespace BusinessTier
 
         public LicenseClass TestClass;
 
-        
-        public bool IsExpired { get { return DateTime.Now.Subtract((DateTime)AppointmentDate) >
-                            new TimeSpan(SettingsClass.DrivingTestExpirationPeriod, 0, 0, 0); } }
 
-    }
+        public bool IsExpired { get { return DateTime.Now.Subtract((DateTime)AppointmentDate) >
+                            SettingsClass.TestInfos.Driving.ExpirationPeriod; } }
+
+        public bool IsFeesPaied
+        {
+            get
+            {
+                return DVLDApp.MangeDrivingTests.GetTestFee(AppointmentDate,TestClass) == PaidFees;
+            }
+        }
     
+    }
+
     public class TheoreticalTest : Test
     {
         internal TheoreticalTest(int TestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int CreatedByUserID
@@ -2685,12 +3849,20 @@ namespace BusinessTier
 
         public LicenseClass TestClass;
 
-        
+
         public bool IsExpired { get { return DateTime.Now.Subtract((DateTime)AppointmentDate) >
-                            new TimeSpan(SettingsClass.TheoreticalTestExpirationPeriod, 0, 0, 0); } }
+                            SettingsClass.TestInfos.Theoretical.TheoreticalTestExpirationPeriod; } }
+
+        public bool IsFeesPaied
+        {
+            get
+            {
+                return DVLDApp.MangeTheoreticalTests.GetTestFee(AppointmentDate, TestClass) == PaidFees;
+            }
+        }
 
     }
-     
+
 
     //////////////////////  Extentions  /////////////////////////
 
@@ -2699,31 +3871,49 @@ namespace BusinessTier
         // // // // // // // // // // // // // // From DTeir Structures == To == > Final Structures  // // // // // // // // // // // // // // // // //
 
         public static Country ToCountry(this DTCountry Country)
-        { return new Country(Country.CountryID, Country.CountryName); }
-        public static DetainedLicense ToDetainedLicense(this DTDetainedLicense DetainedLicense)
-        { return new DetainedLicense(DetainedLicense.DetainID, DetainedLicense.LicenseID, DetainedLicense.DetainDate, DetainedLicense.FineFees, DetainedLicense.CreatedByUserID, DetainedLicense.ReleaseDate, DetainedLicense.ReleasedByUserID, DetainedLicense.ReleaseApplicationID); }
+        { return Country == null ? null : new Country(Country.CountryID, Country.CountryName); }
+        public static DetainLicenseRecord ToDetainLicenseRecord(this DTDetainLicenseRecord DetainedLicenseRecord)
+        { return DetainedLicenseRecord == null ? null : new DetainLicenseRecord(DetainedLicenseRecord.DetainID, DetainedLicenseRecord.LicenseID, DetainedLicenseRecord.DetainDate, DetainedLicenseRecord.FineFees, DetainedLicenseRecord.CreatedByUserID, DetainedLicenseRecord.ReleaseDate, DetainedLicenseRecord.ReleasedByUserID, DetainedLicenseRecord.ReleaseApplicationID); }
         public static Application ToApplication(this DTApplication Application)
-        { return new Application(Application.ApplicationID, Application.ApplicantPersonID, Application.ApplicationDate, Application.ApplicationTypeID, Application.ApplicationStatus, Application.LastStatusDate, Application.PaidFees, Application.CreatedByUserID); }
+        { return Application == null ? null : new Application(Application.ApplicationID, Application.ApplicantPersonID, Application.ApplicationDate, Application.ApplicationTypeID, Application.ApplicationStatus, Application.LastStatusDate, Application.PaidFees, Application.CreatedByUserID); }
         public static User ToUser(this DTUser User)
-        { return new User(User.UserID,User.PersonID, User.UserName, User.Password, User.IsActive); }
+        { return User == null ? null : new User(User.UserID, User.PersonID, User.UserName, User.Password, User.IsActive); }
         public static Person ToPerson(this DTPerson Person)
-        { return new Person(Person.PersonID, Person.NationalNo, Person.FirstName, Person.SecondName, Person.ThirdName, Person.LastName, Person.DateOfBirth, Person.Gendor, Person.Address, Person.Phone, Person.Email, Person.NationalityCountryID, Person.ImagePath); }
+        { return Person == null ? null : new Person(Person.PersonID, Person.NationalNo, Person.FirstName, Person.SecondName, Person.ThirdName, Person.LastName, Person.DateOfBirth, Person.Gendor, Person.Address, Person.Phone, Person.Email, Person.NationalityCountryID, SettingsClass.Paths.ProfilePhotos.ProfileImagesPath + Person.ImageFileName); }
         public static Driver ToDriver(this DTDriver Driver)
-        { return new Driver(Driver.DriverID, Driver.PersonID, Driver.CreatedByUserID, Driver.CreatedDate); }
+        { return Driver == null ? null : new Driver(Driver.DriverID, Driver.PersonID, Driver.CreatedByUserID, Driver.CreatedDate); }
         public static EyeTest ToEyeTest(this DTEyeTest EyeTest)
-        { return new EyeTest(EyeTest.TestID, EyeTest.PersonID, EyeTest.AppointmentDate, EyeTest.PaidFees, EyeTest.AppointmentMadeByUserID, EyeTest.TestApplicationID, EyeTest.TestResult,EyeTest.Notes, EyeTest.ResultAddedByUserID); }
+        { return EyeTest == null ? null : new EyeTest(EyeTest.TestID, EyeTest.PersonID, EyeTest.AppointmentDate, EyeTest.PaidFees, EyeTest.AppointmentMadeByUserID, EyeTest.TestApplicationID, EyeTest.TestResult, EyeTest.Notes, EyeTest.ResultAddedByUserID); }
         public static InternationalLicense ToInternationalLicense(this DTInternationalLicense InternationalLicense)
-        { return new InternationalLicense(InternationalLicense.InternationalLicenseID, InternationalLicense.ApplicationID, InternationalLicense.DriverID, InternationalLicense.IssuedUsingLocalLicenseID, InternationalLicense.IssueDate, InternationalLicense.ExpirationDate, InternationalLicense.IsActive, InternationalLicense.CreatedByUserID); }
+        { return InternationalLicense == null ? null : new InternationalLicense(InternationalLicense.InternationalLicenseID, InternationalLicense.ApplicationID, InternationalLicense.DriverID, InternationalLicense.IssuedUsingLocalLicenseID, InternationalLicense.IssueDate, InternationalLicense.ExpirationDate, InternationalLicense.IsActive, InternationalLicense.CreatedByUserID); }
         public static License ToLicense(this DTLicense License)
-        { return new License(License.LicenseID, License.LocalDrivingLicenseApplicationID, License.DriverID, License.LicenseClass, License.IssueDate, License.ExpirationDate, License.Notes, License.IsActive, License.IssueReason, License.CreatedByUserID); }
+        { return License == null ? null : new License(License.LicenseID, License.LocalDrivingLicenseApplicationID, License.DriverID, License.LicenseClass, License.IssueDate, License.ExpirationDate, License.Notes, License.IsActive, License.IssueReason, License.CreatedByUserID); }
         public static LocalDrivingLicenseApplication ToLocalDrivingLicenseApplication(this DTLocalDrivingLicenseApplication LocalDrivingLicenseApplication)
-        { return new LocalDrivingLicenseApplication(LocalDrivingLicenseApplication.LocalDrivingLicenseApplicationID, LocalDrivingLicenseApplication.ApplicationID, LocalDrivingLicenseApplication.LicenseClassID, LocalDrivingLicenseApplication.EyeTestID, LocalDrivingLicenseApplication.TheoritecalTestID, LocalDrivingLicenseApplication.DrivingTestID); }
+        {
+            if (LocalDrivingLicenseApplication == null)
+                return null;
+
+            string CourseCertificatePath = null;
+
+            if (LocalDrivingLicenseApplication.DrivingCourseCertificatePhotoFileName != null)
+                  CourseCertificatePath = SettingsClass.Paths.DrivingCourseCertificatesCopes.ImagesPath 
+                    + LocalDrivingLicenseApplication.DrivingCourseCertificatePhotoFileName;
+
+            string IDFilePath = null;
+
+            if (LocalDrivingLicenseApplication.IdentificationPhotoFileName != null)
+                IDFilePath = SettingsClass.Paths.IdentificationsCopes.ImagesPath 
+                    + LocalDrivingLicenseApplication.DrivingCourseCertificatePhotoFileName;
+
+            return new LocalDrivingLicenseApplication(LocalDrivingLicenseApplication.LocalDrivingLicenseApplicationID, LocalDrivingLicenseApplication.ApplicationID, LocalDrivingLicenseApplication.LicenseClass, LocalDrivingLicenseApplication.EyeTestID, LocalDrivingLicenseApplication.TheoritecalTestID, LocalDrivingLicenseApplication.DrivingTestID,
+               SettingsClass.Paths.IdentificationsCopes.ImagesPath + LocalDrivingLicenseApplication.IdentificationPhotoFileName,CourseCertificatePath);
+        }        
         public static TheoreticalTest ToTheoreticalTest(this DTTheoreticalTest Test)
-        { return new TheoreticalTest(Test.TestID, Test.PersonID, Test.AppointmentDate, Test.PaidFees, Test.AppointmentMadeByUserID, Test.TestApplicationID, Test.TestResult, Test.Notes, Test.ResultAddedByUserID,Test.TestClass); }
+        { return Test == null ? null : new TheoreticalTest(Test.TestID, Test.PersonID, Test.AppointmentDate, Test.PaidFees, Test.AppointmentMadeByUserID, Test.TestApplicationID, Test.TestResult, Test.Notes, Test.ResultAddedByUserID, Test.TestClass); }
         public static DrivingTest ToDrivingTest(this DTDrivingTest Test)
-        { return new DrivingTest(Test.TestID, Test.PersonID, Test.AppointmentDate, Test.PaidFees, Test.AppointmentMadeByUserID, Test.TestApplicationID, Test.TestResult, Test.Notes, Test.ResultAddedByUserID,Test.TestClass); }
-    
-    
+        { return Test == null ? null : new DrivingTest(Test.TestID, Test.PersonID, Test.AppointmentDate, Test.PaidFees, Test.AppointmentMadeByUserID, Test.TestApplicationID, Test.TestResult, Test.Notes, Test.ResultAddedByUserID, Test.TestClass); }
+
+
     }
 
 }

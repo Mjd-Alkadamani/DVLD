@@ -170,7 +170,7 @@ namespace MjdDVLD.Application_Forms
 
             decimal NeededFee = SettingsClass.GetInternationalLicenseIssuanceFees
                 ((LicenseClass)cbLicenseClassInterntional.SelectedIndex + 1) +
-                DVLDApp.MangeApplications.GetApplicationFees((ApplicationType)cbApplicationType.SelectedIndex + 1);
+                DVLDApp.MangeApplications.GetApplicationCost((ApplicationType)cbApplicationType.SelectedIndex + 1);
 
             if (Convert.ToDecimal(txtbPaidFees.Text) < NeededFee)
             {

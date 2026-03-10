@@ -52,7 +52,7 @@ namespace DataAccessTier
             this.Phone = Phone;
             this.Email = Email;
             this.NationalityCountryID = NationalityCountryID;
-            this.ImagePath = ImagePath;
+            this.ImageFileName = ImagePath;
         }
 
         internal int _PersonID;
@@ -68,12 +68,12 @@ namespace DataAccessTier
         public string Phone;
         public string Email;
         public int NationalityCountryID;
-        public string ImagePath;
+        public string ImageFileName;
     }
 
     public class AccessPersonData
     {
-        public static DTPerson Find(string NationalNo)
+        public static DTPerson Find(string NationalNo, int NationalityCountryID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -86,14 +86,14 @@ namespace DataAccessTier
                   ",[Gendor]" +
                   ",[Address]" +
                   ",[Phone]" +
-                  ",[Email]" +
-                  ",[NationalityCountryID]" +
+                  ",[Email]" +                  
                   ",[ImagePath]" +
                   " FROM[dbo].[People]" +
-                  " where NationalNo = @NationalNo";
+                  " where NationalNo = @NationalNo and NationalityCountryID = @NationalityCountryID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
             Command.Parameters.AddWithValue("@NationalNo", NationalNo);
+            Command.Parameters.AddWithValue("@NationalityCountryID", NationalityCountryID);
             DTPerson FindedPerson = null;
 
             try
@@ -187,14 +187,80 @@ namespace DataAccessTier
 
         }
 
-        public static bool IsExist(string NationalNo)
+        public static DTPerson FindByDriverID(int DriverID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
-            string Query = "select top 1 isExist = 1 from People where  NationalNo =  @NationalNo";
+            string Query = "SELECT" +
+                  " [People].[PersonID]" +
+                  ",[NationalNo]" +
+                  ",[FirstName]" +
+                  ",[SecondName]" +
+                  ",[ThirdName]" +
+                  ",[LastName]" +
+                  ",[DateOfBirth]" +
+                  ",[Gendor]" +
+                  ",[Address]" +
+                  ",[Phone]" +
+                  ",[Email]" +
+                  ",[NationalityCountryID]" +
+                  ",[ImagePath]" +
+                  " FROM[dbo].[People] inner join [dbo].[Drivers] on [People].PersonID = [Drivers].PersonID " +
+                  " where DriverID = @DriverID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@DriverID", DriverID);
+            DTPerson FindedPerson = null;
+
+            try
+            {
+                Connection.Open();
+                SqlDataReader Reader = Command.ExecuteReader();
+
+
+
+                if (Reader.Read())
+                {
+
+                    FindedPerson = new DTPerson
+                          ((int)Reader["PersonID"],
+                          (string)Reader["NationalNo"],
+                          (string)Reader["FirstName"],
+                          (string)Reader["SecondName"],
+                          Reader["ThirdName"] == DBNull.Value ? "" : (string)Reader["ThirdName"],
+                          (string)Reader["LastName"],
+                          (DateTime)Reader["DateOfBirth"],
+                          ((string)Reader["Gendor"])[0].ToGendor(),
+                          (string)Reader["Address"],
+                          (string)Reader["Phone"],
+                          Reader["Email"] == DBNull.Value ? "" : (string)Reader["Email"],
+                          (int)Reader["NationalityCountryID"],
+                          (string)Reader["ImagePath"]
+                         );
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return FindedPerson;
+
+        }
+
+        public static bool IsExist(string NationalNo, int NationalityCountryID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "select top 1 isExist = 1 from People where  NationalNo =  @NationalNo and NationalityCountryID = @NationalityCountryID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
             Command.Parameters.AddWithValue("@NationalNo", NationalNo);
+            Command.Parameters.AddWithValue("@NationalityCountryID", NationalityCountryID);
             bool IsExist = false;
 
             try
@@ -373,18 +439,28 @@ namespace DataAccessTier
 
         internal static int? _AddNewPerson(ref DTPerson PersonToAdd)
         {
-        if ( // chacking for Nan nullable String fileds //
-             string.IsNullOrEmpty (PersonToAdd.NationalNo) ||
-             string.IsNullOrEmpty (PersonToAdd.FirstName) ||
-             string.IsNullOrEmpty (PersonToAdd.SecondName) ||
-             string.IsNullOrEmpty (PersonToAdd.LastName) ||
-             string.IsNullOrEmpty (PersonToAdd.Address) ||
-             string.IsNullOrEmpty (PersonToAdd.Phone) ||
-             string.IsNullOrEmpty (PersonToAdd.ImagePath)
-            ) 
-            { return null; }
+            if (PersonToAdd == null)
+                return null;
 
-        SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+            if (PersonToAdd.NationalityCountryID < 0)
+                return null;
+
+            if ( string.IsNullOrEmpty(PersonToAdd.NationalNo) ||
+                 string.IsNullOrEmpty(PersonToAdd.FirstName) ||
+                 string.IsNullOrEmpty(PersonToAdd.SecondName) ||
+                 string.IsNullOrEmpty(PersonToAdd.LastName) ||
+                 string.IsNullOrEmpty(PersonToAdd.Address) ||
+                 string.IsNullOrEmpty(PersonToAdd.Phone) ||
+                 string.IsNullOrEmpty(PersonToAdd.Email) ||
+                 string.IsNullOrEmpty(PersonToAdd.ImageFileName)
+                )
+                return null;
+
+            if (PersonToAdd.DateOfBirth.AddYears
+                 (SettingsClass.PeopleSettings.MinimumAgeForPersonOnTheSystem) > DateTime.Now)
+                return null;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
                 "INSERT INTO[dbo].[People]" +
@@ -427,7 +503,7 @@ namespace DataAccessTier
                 Command.Parameters.AddWithValue("@Email", PersonToAdd.Email);
 
             Command.Parameters.AddWithValue("@NationalityCountryID", PersonToAdd.NationalityCountryID);
-            Command.Parameters.AddWithValue("@ImagePath", PersonToAdd.ImagePath);
+            Command.Parameters.AddWithValue("@ImagePath", PersonToAdd.ImageFileName);
 
             int? AddedID = null;
 
@@ -459,9 +535,21 @@ namespace DataAccessTier
             string SecondName, string ThirdName, string LastName, DateTime DateOfBirth, Gendor Gendor, string Adress,
             string Phone, string Email, int NationalityCountryID, string ImagePath)
         {
+            if (string.IsNullOrEmpty(ImagePath))
+                return null;
+
+            if (!GeneralFunctions.IsValidImage(ImagePath))
+                return null;
+
+            string ImageFileName = DTFunctions.GetNextFileName(SettingsClass.Paths.IdentificationsCopes.ImagesPath);
+
+            if (DTFunctions.CopyFile
+                (ImagePath, SettingsClass.Paths.IdentificationsCopes.ImagesPath + ImageFileName) != true)
+                return null;
+
             DTPerson NewPerson = new DTPerson(-1, NationalNo, FirstName
                 , SecondName, ThirdName, LastName, DateOfBirth, Gendor, Adress
-                , Phone, Email, NationalityCountryID, ImagePath);
+                , Phone, Email, NationalityCountryID, ImageFileName);
 
             int? ID = _AddNewPerson(ref NewPerson);
 
@@ -478,7 +566,16 @@ namespace DataAccessTier
         public static bool UpdatePerson(int PersonID, string NationalNo, string FirstName, string SecondName, string ThirdName, string LastName,
             DateTime DateOfBirth, Gendor Gendor, string Adress, string Phone, string Email, int NationalityCountryID, string ImagePath)
         {
-            if (!IsExist(PersonID))
+            if (string.IsNullOrEmpty(ImagePath))
+                return false;
+
+            if (!GeneralFunctions.IsValidImage(ImagePath))
+                return false;
+
+            string ImageFileName = DTFunctions.GetNextFileName(SettingsClass.Paths.IdentificationsCopes.ImagesPath);
+
+            if (DTFunctions.CopyFile
+                (ImagePath, SettingsClass.Paths.IdentificationsCopes.ImagesPath + ImageFileName) != true)
                 return false;
 
             return UpdatePerson(new DTPerson
@@ -488,6 +585,24 @@ namespace DataAccessTier
 
         public static bool UpdatePerson(DTPerson PersonToUpdate)
         {
+            if (PersonToUpdate == null)
+                return false;
+
+            if (PersonToUpdate.PersonID < 0)
+                return false;
+
+            if (PersonToUpdate.DateOfBirth.AddYears
+                 (SettingsClass.PeopleSettings.MinimumAgeForPersonOnTheSystem) > DateTime.Now)
+                return false;
+
+            DTPerson OldPerson = Find(PersonToUpdate.PersonID);
+
+            if (OldPerson == null)
+                return false;
+
+            if (OldPerson.NationalityCountryID != PersonToUpdate.NationalityCountryID ||
+                OldPerson.NationalNo != PersonToUpdate.NationalNo)
+                return false;
          
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -495,18 +610,18 @@ namespace DataAccessTier
 
               "UPDATE[dbo].[People]" +
               "SET " +
-              "[NationalNo]            = @NationalNo" +
-              ",[FirstName]            = @FirstName" +
-              ",[SecondName]           = @SecondName" +
-              ",[ThirdName]            = @ThirdName" +
-              ",[LastName]             = @LastName" +
-              ",[DateOfBirth]          = @DateOfBirth" +
-              ",[Gendor]               = @Gendor" +
-              ",[Address]              = @Address" +
-              ",[Phone]                = @Phone" +
-              ",[Email]                = @Email" +
+              "[NationalNo] = @NationalNo" +
+              ",[FirstName] = @FirstName" +
+              ",[SecondName] = @SecondName" +
+              ",[ThirdName] = @ThirdName" +
+              ",[LastName] = @LastName" +
+              ",[DateOfBirth] = @DateOfBirth" +
+              ",[Gendor = @Gendor" +
+              ",[Address] = @Address" +
+              ",[Phone] = @Phone" +
+              ",[Email] = @Email" +
               ",[NationalityCountryID] = @NationalityCountryID" +
-              ",[ImagePath]            = @ImagePath" +
+              ",[ImagePath] = @ImagePath" +
                    " WHERE PersonID = @PersonId";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
@@ -532,7 +647,7 @@ namespace DataAccessTier
                 Command.Parameters.AddWithValue("@Email", PersonToUpdate.Email);
 
             Command.Parameters.AddWithValue("@NationalityCountryID", PersonToUpdate.NationalityCountryID);
-            Command.Parameters.AddWithValue("@ImagePath", PersonToUpdate.ImagePath);
+            Command.Parameters.AddWithValue("@ImagePath", PersonToUpdate.ImageFileName);
             Command.Parameters.AddWithValue("@PersonID", PersonToUpdate.PersonID);
 
             bool DoesUpdateSucceded = false;
@@ -572,43 +687,6 @@ namespace DataAccessTier
             SqlCommand Command = new SqlCommand(Query, Connection);
 
             Command.Parameters.AddWithValue("@PersonID", IDToDelete);
-
-            bool DoesDeletionSucceded = false;
-
-            try
-            {
-                Connection.Open();
-
-                object DoesSucceded = Command.ExecuteNonQuery();
-
-                if (DoesSucceded != null)
-                    DoesDeletionSucceded = true;
-
-            }
-            catch (Exception ex)
-            {
-
-            }
-            finally
-            {
-                Connection.Close();
-            }
-
-            return DoesDeletionSucceded;
-        }
-
-        public static bool DeletePerson(string NationalNoToDelete)
-        {
-
-            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
-
-            string Query =
-              "delete from [dbo].[People]" +
-                   "WHERE NationalNo = @NationalNo";
-
-            SqlCommand Command = new SqlCommand(Query, Connection);
-
-            Command.Parameters.AddWithValue("@NationalNo", NationalNoToDelete);
 
             bool DoesDeletionSucceded = false;
 

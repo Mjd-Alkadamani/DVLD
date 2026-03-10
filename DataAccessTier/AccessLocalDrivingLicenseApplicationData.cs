@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
+using System.IO;
 using System.Data.SqlClient;
 using General;
 
@@ -12,24 +13,72 @@ namespace DataAccessTier
     public class DTLocalDrivingLicenseApplication
     {
         internal protected DTLocalDrivingLicenseApplication(int LocalDrivingLicenseApplicationID, int ApplicationID,
-            LicenseClass LicenseClassID, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
+            LicenseClass LicenseClassID, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID,
+            string IdentificationPhotoFileName, string DrivingCourseCertificatePhotoFileName)
         {
             this._LocalDrivingLicenseApplicationID = LocalDrivingLicenseApplicationID;
             this.ApplicationID = ApplicationID;
-            this.LicenseClassID = LicenseClassID;
+            this.LicenseClass = LicenseClassID;
             this.EyeTestID = EyeTestID;
             this.TheoritecalTestID = TheoritecalTestID;
             this.DrivingTestID = DrivingTestID;
+            this.IdentificationPhotoFileName = IdentificationPhotoFileName;
+            this.DrivingCourseCertificatePhotoFileName = DrivingCourseCertificatePhotoFileName;
         }
 
         internal int _LocalDrivingLicenseApplicationID;
         public int LocalDrivingLicenseApplicationID { get { return _LocalDrivingLicenseApplicationID; } }
 
         public int ApplicationID;
-        public LicenseClass LicenseClassID;
+        public LicenseClass LicenseClass;
         public int? EyeTestID;
         public int? TheoritecalTestID;
         public int? DrivingTestID;
+        public string IdentificationPhotoFileName;
+        public string DrivingCourseCertificatePhotoFileName;
+
+        // This method Checks if felid that are NOT null's valied or not
+        public bool CheckMainApplicationAndNulls()
+        {
+
+            switch (AccessApplicationData.GetApplicationType(ApplicationID))
+            {
+                case ApplicationType.LicenseIssuance:
+                    break;
+
+                case ApplicationType.RenewDrivingLicense:
+                    if (DrivingTestID != null ||
+                         TheoritecalTestID != null ||
+                          !string.IsNullOrEmpty(IdentificationPhotoFileName) ||
+                           !string.IsNullOrEmpty(DrivingCourseCertificatePhotoFileName))
+                        return false;
+                    break;
+
+                case ApplicationType.DamagedReplacement:
+                    if (EyeTestID != null ||
+                         DrivingTestID != null ||
+                          TheoritecalTestID != null ||
+                           !string.IsNullOrEmpty(IdentificationPhotoFileName) ||
+                            !string.IsNullOrEmpty(DrivingCourseCertificatePhotoFileName))
+                        return false;
+                    break;
+
+                case ApplicationType.MissingReplacement:
+                    if (EyeTestID != null ||
+                         DrivingTestID != null ||
+                          TheoritecalTestID != null ||
+                           !string.IsNullOrEmpty(IdentificationPhotoFileName) ||
+                            !string.IsNullOrEmpty(DrivingCourseCertificatePhotoFileName))
+                        return false;
+
+                    break;
+                default:
+                    return false;
+            }
+
+            return true;
+        }
+   
     }
 
     public class AccessLocalDrivingLicenseApplicationData
@@ -44,6 +93,8 @@ namespace DataAccessTier
                   + ",[EyeTestID]"
                   + ",[TheoreticalTestID]"
                   + ",[DrivingTestID]"
+                  + ",[IdentificationPhotoFileName]" 
+                  + ",[DrivingCourseCertificatePhotoFileName]" 
                     + " FROM [dbo].[LocalDrivingLicenseApplications]"
                     + " where LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
 
@@ -66,7 +117,9 @@ namespace DataAccessTier
                        ((int)Reader["LicenseClassID"]).ToLicenseClass(),
                        Reader["EyeTestID"] == DBNull.Value ? null : (int?)Reader["EyeTestID"],
                        Reader["TheoreticalTestID"] == DBNull.Value ? null : (int?)Reader["TheoreticalTestID"],
-                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"]
+                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"],
+                       Reader["IdentificationPhotoFileName"] == DBNull.Value ? null : (string)Reader["IdentificationPhotoFileName"],
+                       Reader["DrivingCourseCertificatePhotoFileName"] == DBNull.Value ? null : (string)Reader["DrivingCourseCertificatePhotoFileName"]
                      );
                 }
             }
@@ -83,6 +136,62 @@ namespace DataAccessTier
 
         }
         
+        public static DTLocalDrivingLicenseApplication FindLeatestActiveLocalAppOfClassForPersonID(int PersonID, LicenseClass Class)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT "
+                  + " [LocalDrivingLicenseApplicationID]"
+                  + ",[ApplicationID]"
+                  + ",[EyeTestID]"
+                  + ",[TheoreticalTestID]"
+                  + ",[DrivingTestID]"
+                  + ",[IdentificationPhotoFileName]"
+                  + ",[DrivingCourseCertificatePhotoFileName]"
+                  + " FROM [dbo].[LocalDrivingLicenseApplications] inner join [dbo].[Applications] on [LocalDrivingLicenseApplications].[ApplicationID]=[Applications].[ApplicationID] "
+                  + " where LicenseClasses = @LicenseClasses and"
+                  + " ApplicantPersonID = @ApplicantPersonID "
+                  + " order by Applications.ApplicationDate desc";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@LicenseClasses", Class);
+            Command.Parameters.AddWithValue("@ApplicantPersonID", PersonID);
+            DTLocalDrivingLicenseApplication FindedLocalDrivingLicenseApplication = null;
+
+            try
+            {
+                Connection.Open();
+                SqlDataReader Reader = Command.ExecuteReader();
+
+
+
+                if (Reader.Read())
+                {
+                    FindedLocalDrivingLicenseApplication = new DTLocalDrivingLicenseApplication
+                     ((int)Reader["LocalDrivingLicenseApplicationID"],
+                       (int)Reader["ApplicationID"],
+                       Class,
+                       Reader["EyeTestID"] == DBNull.Value ? null : (int?)Reader["EyeTestID"],
+                       Reader["TheoreticalTestID"] == DBNull.Value ? null : (int?)Reader["TheoreticalTestID"],
+                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"],
+                       Reader["IdentificationPhotoFileName"] == DBNull.Value ? null : (string)Reader["IdentificationPhotoFileName"],
+                       Reader["DrivingCourseCertificatePhotoFileName"] == DBNull.Value ? null : (string)Reader["DrivingCourseCertificatePhotoFileName"]
+                     );
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return FindedLocalDrivingLicenseApplication;
+
+        }
+
         public static LicenseClass? FindClass(int LocalDrivingLicenseApplicationID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
@@ -121,7 +230,46 @@ namespace DataAccessTier
             return Class;
 
         }
-        
+
+        public static LicenseClass? FindClassByApplicationID(int ApplicationID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT "
+                    + "[LicenseClassID]"
+                    + " FROM [dbo].[LocalDrivingLicenseApplications]"
+                    + " where ApplicationID = @ApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@ApplicationID", ApplicationID);
+
+            LicenseClass? Class = null;
+
+            try
+            {
+                Connection.Open();
+                Object Object = null;
+                Object = Command.ExecuteScalar();
+
+
+                if (Object != null)
+                {
+                    Class = (LicenseClass)Convert.ToInt32(Class);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return Class;
+
+        }
+
         public static DTLocalDrivingLicenseApplication FindByApplicationID(int ApplicationID)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
@@ -132,6 +280,8 @@ namespace DataAccessTier
                   + ",[EyeTestID]"
                   + ",[TheoreticalTestID]"
                   + ",[DrivingTestID]"
+                  + ",[IdentificationPhotoFileName]"
+                  + ",[DrivingCourseCertificatePhotoFileName]"
                     + " FROM [dbo].[LocalDrivingLicenseApplications]"
                     + " where ApplicationID = @ApplicationID";
 
@@ -154,8 +304,10 @@ namespace DataAccessTier
                        ((int)Reader["LicenseClassID"]).ToLicenseClass(),
                        Reader["EyeTestID"] == DBNull.Value ? null : (int?)Reader["EyeTestID"],
                        Reader["TheoreticalTestID"] == DBNull.Value ? null : (int?)Reader["TheoreticalTestID"],
-                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"]
-                     );
+                       Reader["DrivingTestID"] == DBNull.Value ? null : (int?)Reader["DrivingTestID"],
+                       Reader["IdentificationPhotoFileName"] == DBNull.Value ? null : (string)Reader["IdentificationPhotoFileName"],
+                       Reader["DrivingCourseCertificatePhotoFileName"] == DBNull.Value ? null : (string)Reader["DrivingCourseCertificatePhotoFileName"]
+                       );
                 }
             }
             catch (Exception ex)
@@ -281,6 +433,8 @@ namespace DataAccessTier
                   + ",[EyeTestID]"
                   + ",[TheoreticalTestID]"
                   + ",[DrivingTestID]"
+                  + ",[IdentificationPhotoFileName]"
+                  + ",[DrivingCourseCertificatePhotoFileName]"
                     + " FROM[dbo].[LocalDrivingLicenseApplications]";
 
             DataTable Table = new DataTable();
@@ -307,31 +461,13 @@ namespace DataAccessTier
             return Table;
         }
 
-        private static int? _AddNewLocalDrivingLicenseApplication(ref DTLocalDrivingLicenseApplication LocalDrivingLicenseApplicationToAdd)
+        private static int? _AddNew(ref DTLocalDrivingLicenseApplication LocalAppToAdd)
         {
-            ApplicationType? Type = DataAccessTier.AccessApplicationData.GetApplicationType(LocalDrivingLicenseApplicationToAdd.ApplicationID);
+            if (LocalAppToAdd == null)
+                return null;
 
-            switch (Type)
-            {
-                case null:
-                    return null;
-                case ApplicationType.LicenseIssuance:
-                    break;
-                case ApplicationType.RetakeTest:
-                    if (LocalDrivingLicenseApplicationToAdd.DrivingTestID != null ||
-                         LocalDrivingLicenseApplicationToAdd.TheoritecalTestID != null)
-                            return null;
-                    break;
-                case ApplicationType.DamagedReplacement:
-                case ApplicationType.MissingReplacement:
-                    if (LocalDrivingLicenseApplicationToAdd.EyeTestID != null ||
-                         LocalDrivingLicenseApplicationToAdd.DrivingTestID != null ||
-                          LocalDrivingLicenseApplicationToAdd.TheoritecalTestID != null)
-                        return null;
-                    break;
-                default:
-                    return null;
-            }
+            if (!LocalAppToAdd.CheckMainApplicationAndNulls())
+                return null;            
             
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -342,38 +478,58 @@ namespace DataAccessTier
            " ,@LicenseClass" +
            " ,@EyeTestID" +
            ",@TheoreticalTestID" +
-           ",@DrivingTestID);" +
+           ",@DrivingTestID" +
+           ",@IdentificationPhotoFileName" +
+           ",@DrivingCourseCertificatePhotoFileName);" +
            " SELECT SCOPE_IDENTITY();";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
 
-            Command.Parameters.AddWithValue("@ApplicationID", LocalDrivingLicenseApplicationToAdd.ApplicationID);
-            Command.Parameters.AddWithValue("@LicenseClass", (LocalDrivingLicenseApplicationToAdd.LicenseClassID).ToDBValue());
-            if (LocalDrivingLicenseApplicationToAdd.EyeTestID == null)
+            Command.Parameters.AddWithValue("@ApplicationID", LocalAppToAdd.ApplicationID);
+            Command.Parameters.AddWithValue("@LicenseClass", (LocalAppToAdd.LicenseClass).ToDBValue());
+            if (LocalAppToAdd.EyeTestID == null)
             {
                 Command.Parameters.AddWithValue("@EyeTestID", DBNull.Value);
             }
             else
             {
-                Command.Parameters.AddWithValue("@EyeTestID", LocalDrivingLicenseApplicationToAdd.EyeTestID);
+                Command.Parameters.AddWithValue("@EyeTestID", LocalAppToAdd.EyeTestID);
             }
 
-            if (LocalDrivingLicenseApplicationToAdd.EyeTestID == null)
+            if (LocalAppToAdd.EyeTestID == null)
             {
                 Command.Parameters.AddWithValue("@TheoreticalTestID", DBNull.Value);
             }
             else
             {
-                Command.Parameters.AddWithValue("@TheoreticalTestID", LocalDrivingLicenseApplicationToAdd.TheoritecalTestID);
+                Command.Parameters.AddWithValue("@TheoreticalTestID", LocalAppToAdd.TheoritecalTestID);
             }
 
-            if (LocalDrivingLicenseApplicationToAdd.EyeTestID == null)
+            if (LocalAppToAdd.EyeTestID == null)
             {
                 Command.Parameters.AddWithValue("@DrivingTestID", DBNull.Value);
             }
             else
             {
-                Command.Parameters.AddWithValue("@DrivingTestID", LocalDrivingLicenseApplicationToAdd.DrivingTestID);
+                Command.Parameters.AddWithValue("@DrivingTestID", LocalAppToAdd.DrivingTestID);
+            }
+
+            if (LocalAppToAdd.IdentificationPhotoFileName == null)
+            {
+                Command.Parameters.AddWithValue("@IdentificationPhotoFileName", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@IdentificationPhotoFileName", LocalAppToAdd.IdentificationPhotoFileName);
+            }
+
+            if (LocalAppToAdd.DrivingCourseCertificatePhotoFileName == null)
+            {
+                Command.Parameters.AddWithValue("@DrivingCourseCertificatePhotoFileName", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@DrivingCourseCertificatePhotoFileName", LocalAppToAdd.DrivingCourseCertificatePhotoFileName);
             }
 
             int? AddedID = null;
@@ -397,18 +553,46 @@ namespace DataAccessTier
                 Connection.Close();
             }
 
-            LocalDrivingLicenseApplicationToAdd._LocalDrivingLicenseApplicationID = (AddedID == null) ? -1 : (int)AddedID;
+            LocalAppToAdd._LocalDrivingLicenseApplicationID = (AddedID == null) ? -1 : (int)AddedID;
             return AddedID;
 
         }
 
-        public static DTLocalDrivingLicenseApplication AddNewLocalDrivingLicenseApplication(int ApplicationID, LicenseClass LicenseClassID,
-            int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
+        public static DTLocalDrivingLicenseApplication AddNew(int ApplicationID, LicenseClass LicenseClassID,
+            int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID,
+            string IdentificationPhotoFilePath, string DrivingCourseCertificatePhotoFilePath)
         {
-            DTLocalDrivingLicenseApplication NewLocalDrivingLicenseApplication = new DTLocalDrivingLicenseApplication(-1, ApplicationID,
-                LicenseClassID, EyeTestID, TheoritecalTestID, DrivingTestID);
+            // ID Copy
+            if (string.IsNullOrEmpty(IdentificationPhotoFilePath))
+                return null;
 
-            int? ID = _AddNewLocalDrivingLicenseApplication(ref NewLocalDrivingLicenseApplication);
+            if (!GeneralFunctions.IsValidImage(IdentificationPhotoFilePath))
+                return null;
+
+            string IDFileName = DTFunctions.GetNextFileName(SettingsClass.Paths.IdentificationsCopes.ImagesPath);
+
+            if (DTFunctions.CopyFile
+                (IdentificationPhotoFilePath, SettingsClass.Paths.IdentificationsCopes.ImagesPath + IDFileName) != true) 
+                return null;
+
+            //  Driving Course Copy
+            if (string.IsNullOrEmpty(DrivingCourseCertificatePhotoFilePath))
+                return null;
+
+            if (!GeneralFunctions.IsValidImage(DrivingCourseCertificatePhotoFilePath))
+                return null;
+
+            string CoutseFileName = DTFunctions.GetNextFileName(SettingsClass.Paths.DrivingCourseCertificatesCopes.ImagesPath);
+
+            if (DTFunctions.CopyFile
+                (DrivingCourseCertificatePhotoFilePath, SettingsClass.Paths.DrivingCourseCertificatesCopes.ImagesPath + IDFileName) != true)
+                return null;
+
+            DTLocalDrivingLicenseApplication NewLocalDrivingLicenseApplication = new DTLocalDrivingLicenseApplication(-1, ApplicationID,
+                LicenseClassID, EyeTestID, TheoritecalTestID, DrivingTestID,
+                IDFileName, CoutseFileName);
+
+            int? ID = _AddNew(ref NewLocalDrivingLicenseApplication);
 
             if (ID != null)
             {
@@ -421,64 +605,131 @@ namespace DataAccessTier
         }
 
         public static bool UpdateLocalDrivingLicenseApplication(int LocalDrivingLicenseApplicationID, int ApplicationID,
-            LicenseClass LicenseClassID, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID)
+            LicenseClass LicenseClassID, int? EyeTestID, int? TheoritecalTestID, int? DrivingTestID
+            , string IdentificationPhotoFilePath, string DrivingCourseCertificatePhotoFilePath)
         {
-            if (!IsExist(LocalDrivingLicenseApplicationID))
+            // ID Copy
+            if (string.IsNullOrEmpty(IdentificationPhotoFilePath))
+                return false;
+
+            if (!GeneralFunctions.IsValidImage(IdentificationPhotoFilePath))
+                return false;
+
+            string IDFileName = DTFunctions.GetNextFileName(SettingsClass.Paths.IdentificationsCopes.ImagesPath);
+
+            if (DTFunctions.CopyFile
+                (IdentificationPhotoFilePath, SettingsClass.Paths.IdentificationsCopes.ImagesPath + IDFileName) != true)
+                return false;
+
+            //  Driving Course Copy
+            if (string.IsNullOrEmpty(DrivingCourseCertificatePhotoFilePath))
+                return false;
+
+            if (!GeneralFunctions.IsValidImage(DrivingCourseCertificatePhotoFilePath))
+                return false;
+
+            string CoutseFileName = DTFunctions.GetNextFileName(SettingsClass.Paths.DrivingCourseCertificatesCopes.ImagesPath);
+
+            if (DTFunctions.CopyFile
+                (DrivingCourseCertificatePhotoFilePath, SettingsClass.Paths.DrivingCourseCertificatesCopes.ImagesPath + IDFileName) != true)
                 return false;
 
             return UpdateLocalDrivingLicenseApplication(new DTLocalDrivingLicenseApplication
-                (LocalDrivingLicenseApplicationID, ApplicationID, LicenseClassID, EyeTestID, TheoritecalTestID, DrivingTestID));
+                (LocalDrivingLicenseApplicationID, ApplicationID, LicenseClassID, EyeTestID, TheoritecalTestID, DrivingTestID,
+                IdentificationPhotoFilePath, DrivingCourseCertificatePhotoFilePath));
         }
 
-        public static bool UpdateLocalDrivingLicenseApplication(DTLocalDrivingLicenseApplication LocalDrivingLicenseApplicationToUpdate)
+
+        /*
+         */
+
+        public static bool UpdateLocalDrivingLicenseApplication(DTLocalDrivingLicenseApplication LocalAppToUpdate)
         {
+            if (LocalAppToUpdate == null)
+                return false;
+
+            if (LocalAppToUpdate.LocalDrivingLicenseApplicationID < 0)
+                return false;
+
+            if (LocalAppToUpdate == null)
+                return false;
+            
+            DTLocalDrivingLicenseApplication OldApp = Find(LocalAppToUpdate.ApplicationID);
+
+            if (OldApp.ApplicationID != LocalAppToUpdate.ApplicationID ||
+                 OldApp.LicenseClass != LocalAppToUpdate.LicenseClass)
+                return false;
+
+
+            if (!LocalAppToUpdate.CheckMainApplicationAndNulls())
+                return false;
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
               "UPDATE[dbo].[LocalDrivingLicenseApplications]" +
-              "SET " +
-              "[ApplicationID]   = @ApplicationID" +
+              " SET" +
+              " [ApplicationID]   = @ApplicationID" +
               ",[LicenseClassID]        = @LicenseClassID" +
               ",[EyeTestID]    = @EyeTestID" +
               ",[TheoreticalTestID]    = @TheoreticalTestID" +
               ",[DrivingTestID]    = @DrivingTestID" +
-                       " WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
+              ",[IdentificationPhotoFileName]    = @IdentificationPhotoFileName" +
+              ",[DrivingCourseCertificatePhotoFileName]    = @DrivingCourseCertificatePhotoFileName" +
+                    " WHERE LocalDrivingLicenseApplicationID = @LocalDrivingLicenseApplicationID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
 
-            Command.Parameters.AddWithValue("@ApplicationID", LocalDrivingLicenseApplicationToUpdate.ApplicationID);
-            Command.Parameters.AddWithValue("@LicenseClassID", LocalDrivingLicenseApplicationToUpdate.LicenseClassID);
+            Command.Parameters.AddWithValue("@ApplicationID", LocalAppToUpdate.ApplicationID);
+            Command.Parameters.AddWithValue("@LicenseClassID", LocalAppToUpdate.LicenseClass);
 
-            if (LocalDrivingLicenseApplicationToUpdate.EyeTestID == null)
+            if (LocalAppToUpdate.EyeTestID == null)
             {
                 Command.Parameters.AddWithValue("@EyeTestID", DBNull.Value);
             }
             else
             {
-                Command.Parameters.AddWithValue("@EyeTestID", LocalDrivingLicenseApplicationToUpdate.EyeTestID);
+                Command.Parameters.AddWithValue("@EyeTestID", LocalAppToUpdate.EyeTestID);
             }
 
-            if (LocalDrivingLicenseApplicationToUpdate.TheoritecalTestID == null)
+            if (LocalAppToUpdate.TheoritecalTestID == null)
             {
                 Command.Parameters.AddWithValue("@TheoreticalTestID", DBNull.Value);
             }
             else
             {
-                Command.Parameters.AddWithValue("@TheoreticalTestID", LocalDrivingLicenseApplicationToUpdate.TheoritecalTestID);
+                Command.Parameters.AddWithValue("@TheoreticalTestID", LocalAppToUpdate.TheoritecalTestID);
             }
 
-            if (LocalDrivingLicenseApplicationToUpdate.DrivingTestID == null)
+            if (LocalAppToUpdate.DrivingTestID == null)
             {
                 Command.Parameters.AddWithValue("@DrivingTestID", DBNull.Value);
             }
             else
             {
-                Command.Parameters.AddWithValue("@DrivingTestID", LocalDrivingLicenseApplicationToUpdate.DrivingTestID);
+                Command.Parameters.AddWithValue("@DrivingTestID", LocalAppToUpdate.DrivingTestID);
             }
 
-            Command.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalDrivingLicenseApplicationToUpdate.LocalDrivingLicenseApplicationID);
+            if (string.IsNullOrEmpty(LocalAppToUpdate.IdentificationPhotoFileName))
+            {
+                Command.Parameters.AddWithValue("@IdentificationPhotoFileName", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@IdentificationPhotoFileName", LocalAppToUpdate.IdentificationPhotoFileName);
+            }
+
+            if (string.IsNullOrEmpty(LocalAppToUpdate.DrivingCourseCertificatePhotoFileName))
+            {
+                Command.Parameters.AddWithValue("@DrivingCourseCertificatePhotoFileName", DBNull.Value);
+            }
+            else
+            {
+                Command.Parameters.AddWithValue("@DrivingCourseCertificatePhotoFileName", LocalAppToUpdate.DrivingCourseCertificatePhotoFileName);
+            }
+
+            Command.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalAppToUpdate.LocalDrivingLicenseApplicationID);
 
             bool DoesUpdateSucceded = false;
 

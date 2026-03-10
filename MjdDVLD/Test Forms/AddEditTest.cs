@@ -451,19 +451,20 @@ namespace MjdDVLD.Test_Forms
 
         }
 
-        private bool _AddNewTest(Test TestToSave)
+        /*private bool _AddNewTest(Test TestToSave)
         {
             switch (_TestType)
             {
                 case TestType.EyeTest:
-                    return DVLDApp.MangeEyeTests._Add((EyeTest)TestToSave);
+                    return DVLDApp.MangeEyeTests.Add((EyeTest)TestToSave);
                 case TestType.DrivingTest:
                     return DVLDApp.MangeDrivingTests.Add((DrivingTest)TestToSave);
                 default: // TestType.TheoreticalTest
                     return DVLDApp.MangeTheoreticalTests.Add((TheoreticalTest)TestToSave);
             }
         }
-        
+        */
+
         private bool _UpdateTest(Test TestToSave)
         {
             switch (_TestType)
@@ -477,7 +478,7 @@ namespace MjdDVLD.Test_Forms
             }
         }
 
-        private void btnSave_Click(object sender, EventArgs e)
+        /*private void btnSave_Click(object sender, EventArgs e)
         {
             if(lblTestID.Text == "??")
             {
@@ -550,7 +551,8 @@ namespace MjdDVLD.Test_Forms
                 }
             }
         }
-
+        */
+        
         private bool _IsValidEditingTest(Test EditedTestToSave)
         {
             Test OriginalTest;
@@ -560,15 +562,15 @@ namespace MjdDVLD.Test_Forms
             {
                 case TestType.EyeTest:
                     OriginalTest = (Test)DVLDApp.MangeEyeTests.Find(Convert.ToInt32(lblTestID.Text));
-                    RequiredFees = SettingsClass.EyeTestFees;
+                    RequiredFees = (decimal)SettingsClass.TestInfos.Eye.GetCashedFeeIfInDateRange(DateTime.Now);
                     break;
                 case TestType.DrivingTest:
                     OriginalTest = (Test)DVLDApp.MangeDrivingTests.Find(Convert.ToInt32(lblTestID.Text));
-                    RequiredFees = SettingsClass.DrivingTestFees;
+                    RequiredFees = (decimal)SettingsClass.TestInfos.Driving.GetCashedFeeIfInDateRange(DateTime.Now,(LicenseClass)TestClass);
                     break;
                 default: // TestType.TheoreticalTest
                     OriginalTest = (Test)DVLDApp.MangeTheoreticalTests.Find(Convert.ToInt32(lblTestID.Text));
-                    RequiredFees = SettingsClass.TheoreticalTestFees;
+                    RequiredFees = (decimal)SettingsClass.TestInfos.Theoretical.GetCashedFeeIfInDateRange(DateTime.Now, (LicenseClass)TestClass);
                     break;
             }
 

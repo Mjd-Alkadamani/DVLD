@@ -89,17 +89,25 @@ namespace DataAccessTier
         public decimal PaidFees;
         public int CreatedByUserID;
 
+        public bool IsExpired
+        {
+            get
+            {
+                return DateTime.Now.Subtract(ApplicationDate) > SettingsClass.Application.ApplicationExpirationPeriod;
+            }
+        }
+
     }
 
     public class AccessApplicationData
     {
 
-        internal static bool CouldAttachTestOfTypeToApplication(int ApplicationID,TestType Type)
+        internal static bool CouldAttachTestOfTypeToApplication(int ApplicationID, TestType Type)
         {
             switch (GetApplicationType(ApplicationID))
-            { 
+            {
                 case ApplicationType.LicenseIssuance:
-                    switch(Type)
+                    switch (Type)
                     {
                         case TestType.EyeTest:
                             if (AccessEyeTestData.IsExistByApplicationID(ApplicationID))
@@ -108,7 +116,7 @@ namespace DataAccessTier
                                 return true;
 
                         case TestType.DrivingTest:
-                            if(AccessDrivingTestData.IsExistByApplicationID(ApplicationID))
+                            if (AccessDrivingTestData.IsExistByApplicationID(ApplicationID))
                                 return false;
                             else
                                 return true;
@@ -118,7 +126,7 @@ namespace DataAccessTier
                                 return false;
                             else
                                 return true;
-                    }                   
+                    }
 
                 case ApplicationType.RetakeTest:
                     if (AccessEyeTestData.IsExistByApplicationID(ApplicationID) || AccessDrivingTestData.IsExistByApplicationID(ApplicationID) || AccessTheoreticalTestData.IsExistByApplicationID(ApplicationID))
@@ -137,11 +145,11 @@ namespace DataAccessTier
 
                 default:
                     return false;
-                    
+
             }
         }
 
-        public static DataTable GetAllPersonApplications(int PersonID,ApplicationType? TypeSpecific = null)
+        public static DataTable GetAllPersonApplications(int PersonID, ApplicationType? TypeSpecific = null)
         {
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
@@ -230,19 +238,74 @@ namespace DataAccessTier
 
         }
 
+        public static DTApplication FindApplicationByLocalAppID(int LocalAppID)
+        {
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query = "SELECT "
+              + " Applications.ApplicationID"
+              + ",[ApplicantPersonID]"
+              + ",[ApplicationDate]"
+              + ",[ApplicationTypeID]"
+              + ",[ApplicationStatus]"
+              + ",[LastStatusDate]"
+              + ",[PaidFees]"
+              + ",[CreatedByUserID]"
+              + " FROM [dbo].[Applications] inner join [dbo].[LocalDrivingLicenseApplications]"
+              + " on [Applications].ApplicationID = [LocalDrivingLicenseApplications].ApplicationID"
+              + " where [LocalDrivingLicenseApplicationID] = @LocalDrivingLicenseApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+            Command.Parameters.AddWithValue("@LocalDrivingLicenseApplicationID", LocalAppID);
+            DTApplication FindedApplication = null;
+
+            try
+            {
+                Connection.Open();
+                SqlDataReader Reader = Command.ExecuteReader();
+
+
+
+                if (Reader.Read())
+                {
+
+                    FindedApplication = new DTApplication
+                        ((int)Reader["ApplicationID"],
+                        (int)Reader["ApplicantPersonID"],
+                        (DateTime)Reader["ApplicationDate"],
+                        ((int)Reader["ApplicationTypeID"]).ToApplicationType(),
+                        ((byte)Reader["ApplicationStatus"]).ToApplicationStatus(),
+                        (DateTime)Reader["LastStatusDate"],
+                        (decimal)Reader["PaidFees"],
+                        (int)Reader["CreatedByUserID"]);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return FindedApplication;
+
+        }
+
         public static DTApplication FindLastPersonAppicationOfType(int PersonID, ApplicationType Type)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query = "SELECT top 1 "
               + " [ApplicationID]"
-              + ",[ApplicationDate]" 
+              + ",[ApplicationDate]"
               + ",[ApplicationStatus]"
               + ",[LastStatusDate]"
               + ",[PaidFees]"
               + ",[CreatedByUserID]"
               + " FROM[dbo].[Applications]"
-              + " where [ApplicantPersonID] = @ApplicantPersonID and [ApplicationTypeID] = @ApplicationTypeID"+
+              + " where [ApplicantPersonID] = @ApplicantPersonID and [ApplicationTypeID] = @ApplicationTypeID" +
                 " order by ApplicationDate Desc";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
@@ -284,7 +347,7 @@ namespace DataAccessTier
 
         }
 
-        public static bool? FindDosePersonHaveVliedAppicationOfType(int PersonID, ApplicationType Type)
+        public static bool? DoesPersonHaveActiveAppicationOfType(int PersonID, ApplicationType Type)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -292,12 +355,14 @@ namespace DataAccessTier
               + " DoesExist = 1"
               + " FROM[dbo].[Applications]"
               + " where [ApplicantPersonID] = @ApplicantPersonID and [ApplicationTypeID] = @ApplicationTypeID" +
-                " and [ApplicationDate] > @ApplicationDate order by ApplicationDate Desc";
+                " and [ApplicationDate] > @ApplicationDate and [ApplicationStatus] = @ApplicationStatus order by ApplicationDate Desc";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
             Command.Parameters.AddWithValue("@ApplicantPersonID", PersonID);
             Command.Parameters.AddWithValue("@ApplicationTypeID", Type.ToDBValue());
             Command.Parameters.AddWithValue("@ApplicationDate", DateTime.Now.Subtract(SettingsClass.Application.ApplicationExpirationPeriod));
+
+            Command.Parameters.AddWithValue("@ApplicationStatus", (ApplicationStatus.New).ToDBValue());
 
             bool? IsExist = null;
 
@@ -490,7 +555,7 @@ namespace DataAccessTier
         public static DTApplication AddNewApplication(int ApplicantPersonID, DateTime ApplicationDate, ApplicationType ApplicationTypeID,
             ApplicationStatus ApplicationStatus, DateTime LastStatusDate, decimal PaidFees, int CreatedByUserID)
         {
-            DTApplication NewApplication = new DTApplication( -1, ApplicantPersonID, ApplicationDate, ApplicationTypeID,
+            DTApplication NewApplication = new DTApplication(-1, ApplicantPersonID, ApplicationDate, ApplicationTypeID,
                 ApplicationStatus, LastStatusDate, PaidFees, CreatedByUserID);
 
             int? NewID = _AddNewApplication(ref NewApplication);
@@ -499,7 +564,7 @@ namespace DataAccessTier
                 return NewApplication; // the ( _AddNewApplication ) method will insert the new ID to the Application Object
             else
                 return null;
-            
+
         }
 
         public static bool UpdateApplication(int ApplicationID, int ApplicantPersonID, DateTime ApplicationDate, ApplicationType ApplicationTypeID,
@@ -515,27 +580,41 @@ namespace DataAccessTier
 
         public static bool UpdateApplication(DTApplication ApplicationToUpdate)
         {
+            DTApplication OldApplication = Find(ApplicationToUpdate.ApplicationID);
+
+            if (OldApplication == null)
+                return false;
+
+            if (OldApplication.ApplicationStatus !=
+                 ApplicationToUpdate.ApplicationStatus)
+                ApplicationToUpdate.LastStatusDate = DateTime.Now;
+
+            if (OldApplication.CreatedByUserID != ApplicationToUpdate.CreatedByUserID ||
+                OldApplication.ApplicationDate != ApplicationToUpdate.ApplicationDate ||
+                OldApplication.ApplicationTypeID != ApplicationToUpdate.ApplicationTypeID)
+                return false;
+
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
             string Query =
 
-              "UPDATE[dbo].[Applications] " +
-              "SET" +
-              " [ApplicantPersonID]  = @ApplicantPersonID" +
-              ",[ApplicationDate]  = @ApplicationDate" +
-              ",[ApplicationTypeID]  = @ApplicationTypeID" +
-              ",[ApplicationStatus]  = @ApplicationStatus" +
-              ",[LastStatusDate]  = @LastStatusDate" +
-              ",[PaidFees]  = @PaidFees" +
-              ",[CreatedByUserID]  = @CreatedByUserID" +
-                   " WHERE ApplicationID = @ApplicationID";
+              "UPDATE[dbo].[Applications] "
+              + "SET"
+              + " [ApplicantPersonID]  = @ApplicantPersonID"
+              + ",[ApplicationDate]  = @ApplicationDate"
+              + ",[ApplicationTypeID]  = @ApplicationTypeID"
+              + ",[ApplicationStatus]  = @ApplicationStatus"
+              + ",[LastStatusDate]  = @LastStatusDate"
+              + ",[PaidFees]  = @PaidFees"
+              + ",[CreatedByUserID]  = @CreatedByUserID"
+               + " WHERE ApplicationID = @ApplicationID";
 
             SqlCommand Command = new SqlCommand(Query, Connection);
 
             Command.Parameters.AddWithValue("@ApplicantPersonID", ApplicationToUpdate.ApplicantPersonID);
             Command.Parameters.AddWithValue("@ApplicationDate", ApplicationToUpdate.ApplicationDate);
-            Command.Parameters.AddWithValue("@ApplicationTypeID",ApplicationToUpdate.ApplicationTypeID.ToDBValue());
+            Command.Parameters.AddWithValue("@ApplicationTypeID", ApplicationToUpdate.ApplicationTypeID.ToDBValue());
             Command.Parameters.AddWithValue("@ApplicationStatus", ApplicationToUpdate.ApplicationStatus.ToDBValue());
             Command.Parameters.AddWithValue("@LastStatusDate", ApplicationToUpdate.LastStatusDate);
             Command.Parameters.AddWithValue("@PaidFees", ApplicationToUpdate.PaidFees);
@@ -565,6 +644,118 @@ namespace DataAccessTier
             }
 
             return DoesUpdateSucceded;
+        }
+
+        public static bool? UpdateApplicationPaiedFee(int ApplicationIDToUpdate, decimal NewPaiedFee)
+        {
+            if (ApplicationIDToUpdate < 0)
+                return null;
+
+            DTApplication OldApplication = Find(ApplicationIDToUpdate);
+
+            if (OldApplication == null)
+                return null;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Applications]"
+              + " SET"
+              + " [PaidFees]  = @PaidFees"
+              + " WHERE ApplicationID = @ApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@PaidFees", NewPaiedFee);
+
+            Command.Parameters.AddWithValue("@ApplicationID", ApplicationIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        private static bool? _UpdateApplicationStatus(int ApplicationIDToUpdate, ApplicationStatus NewStatus)
+        {
+
+            DTApplication OldApplication = Find(ApplicationIDToUpdate);
+
+            if (OldApplication == null)
+                return null;
+
+            if (OldApplication.ApplicationStatus != NewStatus)
+                OldApplication.LastStatusDate = DateTime.Now;
+            else
+                return true; // nothing to Apdate
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+              "UPDATE [dbo].[Applications]"
+              + " SET"
+              + " [ApplicationStatus]  = @ApplicationStatus"
+              + " ,[LastStatusDate]  = @LastStatusDate"
+              + " WHERE ApplicationID = @ApplicationID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@ApplicationStatus", NewStatus.ToDBValue());
+            Command.Parameters.AddWithValue("@LastStatusDate", OldApplication.LastStatusDate);
+
+            Command.Parameters.AddWithValue("@ApplicationID", ApplicationIDToUpdate);
+
+            bool? DoesUpdateSucceded = null;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool? CompleteApplication(int ApplicationIDToComplete)
+        {
+            return _UpdateApplicationStatus(ApplicationIDToComplete, ApplicationStatus.Completed);
+        }
+
+        public static bool? CanceleApplication(int ApplicationIDToComplete)
+        {
+            return _UpdateApplicationStatus(ApplicationIDToComplete, ApplicationStatus.Canceled);
         }
 
         public static bool DeleteApplication(int ApplicationIDToDelete)
@@ -605,8 +796,7 @@ namespace DataAccessTier
             return DoesDeletionSucceded;
         }
 
-        public static decimal GetApplicationFees(ApplicationType ApplicationType)
-
+        public static decimal GetApplicationCost(ApplicationType ApplicationType)
         {
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -680,7 +870,6 @@ namespace DataAccessTier
         }
 
         public static bool EditPaidFees(int ApplicationIDToEdit, decimal NewFees)
-
         {
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);

@@ -43,13 +43,14 @@
   <ItemGroup>
     <Compile Include="AccessAplicationData.cs" />
     <Compile Include="AccessCountriesData.cs" />
-    <Compile Include="AccessDetainedLicenseData.cs" />
+    <Compile Include="AccessDetainingLicenseRecordData.cs" />
     <Compile Include="AccessDriverData.cs" />
     <Compile Include="AccessInternationalLicenseData.cs" />
     <Compile Include="AccessLicenseData.cs" />
     <Compile Include="AccessLocalDrivingLicenseApplicationData.cs" />
     <Compile Include="AccessPersonData.cs" />
     <Compile Include="AccessDrivingTestData.cs" />
+    <Compile Include="AccessTestsCostRecords.cs" />
     <Compile Include="AccessTheoreticalTestData.cs" />
     <Compile Include="AccessUserData.cs" />
     <Compile Include="AccessEyeTestData.cs" />

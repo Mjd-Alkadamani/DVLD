@@ -408,7 +408,6 @@ namespace DataAccessTier
             return Table;
         }
 
-
         internal static int? _AddNewEyeTest(ref DTEyeTest EyeTestToAdd)
         {
 
@@ -501,16 +500,54 @@ namespace DataAccessTier
         }
 
         public static bool UpdateEyeTest(int TestID, int PersonID, DateTime AppointmentDate, Decimal PaidFees, int AppointmentMadeByUserID
-            , int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID)
+            , int TestApplicationID, bool? TestResult, string Notes, int? ResultAddedByUserID, int CurrentUserID)
         {
             if(!IsExist(TestID))
               return false;
 
-            return UpdateEyeTest(new DTEyeTest(TestID, PersonID, AppointmentDate, PaidFees, AppointmentMadeByUserID, TestApplicationID, TestResult, Notes, ResultAddedByUserID));
+            return UpdateEyeTest(new DTEyeTest(TestID, PersonID, AppointmentDate, PaidFees, AppointmentMadeByUserID, TestApplicationID, TestResult, Notes, ResultAddedByUserID), CurrentUserID);
         }
 
-        public static bool UpdateEyeTest(DTEyeTest EyeTestToUpdate)
+        public static bool UpdateEyeTest(DTEyeTest EyeTestToUpdate ,int UserID)
         {
+            if (EyeTestToUpdate == null)
+                return false;
+
+            if (EyeTestToUpdate.TestID < 0)
+                return false;
+
+            if (!AccessUserData.IsExist(UserID))
+                return false;
+
+            DTEyeTest OldTest = Find(EyeTestToUpdate.TestID);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.PersonID != EyeTestToUpdate.PersonID ||
+                OldTest.TestApplicationID != EyeTestToUpdate.TestApplicationID)
+                return false;
+
+            if (OldTest.AppointmentDate != EyeTestToUpdate.AppointmentDate)
+            {
+                if (OldTest.TestResult != null)
+                    return false;
+
+                if (EyeTestToUpdate.AppointmentDate < DateTime.Now)
+                    return false;
+
+                EyeTestToUpdate.AppointmentMadeByUserID = UserID;
+
+            }
+            else
+                EyeTestToUpdate.AppointmentMadeByUserID = OldTest.AppointmentMadeByUserID;
+
+
+            if (OldTest.TestResult != EyeTestToUpdate.TestResult)
+                EyeTestToUpdate.ResultAddedByUserID = UserID;
+            else
+                EyeTestToUpdate.ResultAddedByUserID = OldTest.ResultAddedByUserID;
+
 
             SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
 
@@ -518,7 +555,7 @@ namespace DataAccessTier
 
               "UPDATE[dbo].[Eye Tests]" +
               "SET" +
-              " [PersonID]  = @PersonID" +
+              " [PersonID] = @PersonID" +
               ",[AppointmentDate] = @AppointmentDate" +
               ",[PaidFees] = @PaidFees" +
               ",[AppointmentMadeByUserID] = @AppointmentMadeByUserID" +
@@ -554,6 +591,188 @@ namespace DataAccessTier
 
 
             Command.Parameters.AddWithValue("@TestID", EyeTestToUpdate.TestID);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdatePaiedFee(int EyeTestIDToUpdate, decimal NewPaidFees)
+        {
+
+            if (EyeTestIDToUpdate < 0)
+                return false;
+
+            if (NewPaidFees < 0)
+                return false;
+
+            DTEyeTest OldTest = Find(EyeTestIDToUpdate);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.TestResult != null)
+                return false;
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Eye Tests]" +
+              "SET" +
+              " [PaidFees] = @PaidFees" +
+                   " WHERE TestID = @TestID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@PaidFees", NewPaidFees);
+
+            Command.Parameters.AddWithValue("@TestID", EyeTestIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+        
+        public static bool UpdateAppointmentDate(int EyeTestIDToUpdate, DateTime NewAppointmentDate, int UserID)
+        {
+            if (EyeTestIDToUpdate < 0)
+                return false;
+
+            if (NewAppointmentDate < DateTime.Now)
+                return false;
+
+            if (!AccessUserData.IsExist(UserID))
+                return false;
+
+            DTEyeTest OldTest = Find(EyeTestIDToUpdate);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.AppointmentDate == NewAppointmentDate)
+                return false;
+
+            if (OldTest.TestResult != null)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Eye Tests]" +
+              " SET" +
+              " [AppointmentDate] = @AppointmentDate" +
+              ",[ResultAddedByUserID] = @ResultAddedByUserID" +
+                   " WHERE TestID = @TestID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@AppointmentDate", NewAppointmentDate);
+            Command.Parameters.AddWithValue("@ResultAddedByUserID", UserID);
+
+            Command.Parameters.AddWithValue("@TestID", EyeTestIDToUpdate);
+
+            bool DoesUpdateSucceded = false;
+
+            try
+            {
+                Connection.Open();
+
+                object DoesSucceded = Command.ExecuteNonQuery();
+
+                if (DoesSucceded != null)
+                    DoesUpdateSucceded = true;
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Connection.Close();
+            }
+
+            return DoesUpdateSucceded;
+        }
+
+        public static bool UpdateTestResult(int EyeTestIDToUpdate, bool TestResult, int UserID)
+        {
+            if (EyeTestIDToUpdate < 0)
+                return false;
+
+            if (!AccessUserData.IsExist(UserID))
+                return false;
+
+            DTEyeTest OldTest = Find(EyeTestIDToUpdate);
+
+            if (OldTest == null)
+                return false;
+
+            if (OldTest.AppointmentDate > DateTime.Now)
+                return false;
+
+            if (OldTest.TestResult != null)
+                return false;
+
+
+            SqlConnection Connection = new SqlConnection(DataAccessSettings.DataAccessString);
+
+            string Query =
+
+              "UPDATE[dbo].[Eye Tests]" +
+              " SET" +
+              " [TestResult] = @TestResult" +
+              ",[ResultAddedByUserID] = @ResultAddedByUserID" +
+
+                   " WHERE TestID = @TestID";
+
+            SqlCommand Command = new SqlCommand(Query, Connection);
+
+            Command.Parameters.AddWithValue("@TestResult", TestResult);
+            Command.Parameters.AddWithValue("@ResultAddedByUserID", UserID);
+
+            Command.Parameters.AddWithValue("@TestID", EyeTestIDToUpdate);
 
             bool DoesUpdateSucceded = false;
 

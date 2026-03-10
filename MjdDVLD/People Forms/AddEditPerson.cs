@@ -34,7 +34,7 @@ namespace MjdDVLD.People_Forms
             btnResetImage.Visible = false;
 
 
-            pbPhoto.ImageLocation = SettingsClass.MaleErrorImagePath;
+            pbPhoto.ImageLocation = SettingsClass.MaleProfileErrorImagePath;
 
             if (PersonIDToEdit != -1)
             {
@@ -142,7 +142,7 @@ namespace MjdDVLD.People_Forms
 
         private void pbPhoto_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty((string)pbPhoto.ImageLocation) || (string)pbPhoto.ImageLocation == SettingsClass.MaleErrorImagePath || (string)pbPhoto.ImageLocation == SettingsClass.FemaleErrorImagePath)
+            if (string.IsNullOrEmpty((string)pbPhoto.ImageLocation) || (string)pbPhoto.ImageLocation == SettingsClass.MaleProfileErrorImagePath || (string)pbPhoto.ImageLocation == SettingsClass.FemaleProfileErrorImagePath)
             {
                 openFileDialog.InitialDirectory = @"D\";
                 openFileDialog.ShowDialog();
@@ -154,12 +154,12 @@ namespace MjdDVLD.People_Forms
 
         private void rbtnFemale_CheckedChanged(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty((string)pbPhoto.ImageLocation)|| (string)pbPhoto.ImageLocation == SettingsClass.MaleErrorImagePath || (string)pbPhoto.ImageLocation == SettingsClass.FemaleErrorImagePath)
+            if (string.IsNullOrEmpty((string)pbPhoto.ImageLocation)|| (string)pbPhoto.ImageLocation == SettingsClass.MaleProfileErrorImagePath || (string)pbPhoto.ImageLocation == SettingsClass.FemaleProfileErrorImagePath)
             {
                 if (rbtnMale.Checked)
-                    pbPhoto.ImageLocation = SettingsClass.MaleErrorImagePath;
+                    pbPhoto.ImageLocation = SettingsClass.MaleProfileErrorImagePath;
                 else
-                    pbPhoto.ImageLocation = SettingsClass.FemaleErrorImagePath;
+                    pbPhoto.ImageLocation = SettingsClass.FemaleProfileErrorImagePath;
             }
         }
 
@@ -190,7 +190,7 @@ namespace MjdDVLD.People_Forms
 
             if (lblPersonID.Text == "??")
             {
-                successed = DVLDApp.MangePeople.Add(_ToPerson());
+                successed = DVLDApp.MangePeople._Add(_ToPerson());
             }
 
             else if (DVLDApp.MangePeople.IsExist(Convert.ToInt32(lblPersonID.Text)))
@@ -201,7 +201,7 @@ namespace MjdDVLD.People_Forms
             else if (MessageBox.Show("Error.", "This Person ID Does Not Exits, Do you want to add the Person as new one.", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 lblPersonID.Text = "??"; // so _ToPerson() could jet in (add new mode) not (edit mode) //  
-                successed = DVLDApp.MangePeople.Add(_ToPerson());
+                successed = DVLDApp.MangePeople._Add(_ToPerson());
             }
 
             if (successed)
